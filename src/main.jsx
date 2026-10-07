@@ -7,7 +7,8 @@ import './index.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
+    {/* basename makes routes work when the site is served from a sub-path (GitHub Pages) */}
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
       <StudyProvider>
         <App />
       </StudyProvider>
