@@ -767,15 +767,276 @@ In the second block, the arrow inside \`setTimeout\` uses the \`this\` of \`star
       priority: 'must',
       frequency: 'very common',
       summary: 'map transforms, filter selects, reduce combines into one value; find, some, every, includes and sort cover the rest.',
-      what: `Arrays come with built-in methods that take a **callback** (a function you pass in):
+      what: `Arrays come with built-in methods. Most take a **callback** (a function you pass in). Each method below has a one-line definition and a small example.
 
-- \`map(fn)\`: makes a **new array** with each item transformed. Same length.
-- \`filter(fn)\`: makes a **new array** with only the items where \`fn\` returns true.
-- \`reduce(fn, start)\`: walks the array and **combines** everything into one value (a sum, an object, anything).
-- \`forEach(fn)\`: just runs \`fn\` for each item; returns \`undefined\`.
-- \`find\` / \`findIndex\`: first matching item / its index.
-- \`some\` / \`every\`: does at least one / every item match?
-- \`includes\`: is this value in the array?
+#### map()
+Creates a **new array** by changing every item. Same length as the original.
+
+\`\`\`javascript
+const mapData = (data) => {
+  return data.map((item) => item * 2);
+};
+
+console.log(mapData([2, 3, 4, 5])); // [4, 6, 8, 10]
+\`\`\`
+
+#### filter()
+Creates a **new array** with only the items where the callback returns \`true\`.
+
+\`\`\`javascript
+const filterData = (data) => {
+  return data.filter((item) => item % 2 === 0);
+};
+
+console.log(filterData([2, 3, 4, 5])); // [2, 4]
+\`\`\`
+
+#### reduce()
+Walks the array and **combines** every item into one value (sum, object, anything).
+
+\`\`\`javascript
+const reduceData = (data) => {
+  return data.reduce((acc, item) => {
+    return acc + item;
+  }, 0);
+};
+
+console.log(reduceData([2, 3, 4, 5])); // 14
+\`\`\`
+
+#### forEach()
+Runs the callback once for each item. Returns \`undefined\`; used for side effects only.
+
+\`\`\`javascript
+const forEachData = (data) => {
+  data.forEach((item) => console.log(item));
+};
+
+forEachData([2, 3, 4]); // 2, 3, 4
+\`\`\`
+
+#### find()
+Returns the **first item** that matches, or \`undefined\` if none match.
+
+\`\`\`javascript
+const findData = (data) => {
+  return data.find((item) => item > 3);
+};
+
+console.log(findData([2, 3, 4, 5])); // 4
+\`\`\`
+
+#### findIndex()
+Returns the **index** of the first item that matches, or \`-1\` if none match.
+
+\`\`\`javascript
+const findIndexData = (data) => {
+  return data.findIndex((item) => item > 3);
+};
+
+console.log(findIndexData([2, 3, 4, 5])); // 2
+\`\`\`
+
+#### some()
+Returns \`true\` if **at least one** item matches.
+
+\`\`\`javascript
+const someData = (data) => {
+  return data.some((item) => item > 4);
+};
+
+console.log(someData([2, 3, 4, 5])); // true
+\`\`\`
+
+#### every()
+Returns \`true\` only if **all** items match.
+
+\`\`\`javascript
+const everyData = (data) => {
+  return data.every((item) => item > 0);
+};
+
+console.log(everyData([2, 3, 4, 5])); // true
+\`\`\`
+
+#### includes()
+Returns \`true\` if the array contains the given value.
+
+\`\`\`javascript
+const includesData = (data) => {
+  return data.includes(4);
+};
+
+console.log(includesData([2, 3, 4, 5])); // true
+\`\`\`
+
+#### sort()
+Sorts the array **in place** (mutates it). Pass \`(a, b) => a - b\` for numbers.
+
+\`\`\`javascript
+const sortData = (data) => {
+  return data.sort((a, b) => a - b);
+};
+
+console.log(sortData([10, 1, 25, 2])); // [1, 2, 10, 25]
+\`\`\`
+
+#### reverse()
+Reverses the array **in place** (mutates it).
+
+\`\`\`javascript
+const reverseData = (data) => {
+  return data.reverse();
+};
+
+console.log(reverseData([2, 3, 4, 5])); // [5, 4, 3, 2]
+\`\`\`
+
+#### slice()
+Returns a **copy** of part of the array, from \`start\` up to (not including) \`end\`. Does not mutate.
+
+\`\`\`javascript
+const sliceData = (data) => {
+  return data.slice(1, 3);
+};
+
+console.log(sliceData([2, 3, 4, 5])); // [3, 4]
+\`\`\`
+
+#### splice()
+Removes, replaces or adds items **in place** (mutates). Returns the removed items.
+
+\`\`\`javascript
+const spliceData = (data) => {
+  data.splice(1, 2, 9);
+  return data;
+};
+
+console.log(spliceData([2, 3, 4, 5])); // [2, 9, 5]
+\`\`\`
+
+#### concat()
+Joins arrays into a **new array**. Does not mutate.
+
+\`\`\`javascript
+const concatData = (data) => {
+  return data.concat([6, 7]);
+};
+
+console.log(concatData([2, 3, 4, 5])); // [2, 3, 4, 5, 6, 7]
+\`\`\`
+
+#### push()
+Adds items to the **end** (mutates). Returns the new length.
+
+\`\`\`javascript
+const pushData = (data) => {
+  data.push(6);
+  return data;
+};
+
+console.log(pushData([2, 3, 4, 5])); // [2, 3, 4, 5, 6]
+\`\`\`
+
+#### pop()
+Removes the **last** item (mutates) and returns it.
+
+\`\`\`javascript
+const popData = (data) => {
+  return data.pop();
+};
+
+console.log(popData([2, 3, 4, 5])); // 5
+\`\`\`
+
+#### shift()
+Removes the **first** item (mutates) and returns it.
+
+\`\`\`javascript
+const shiftData = (data) => {
+  return data.shift();
+};
+
+console.log(shiftData([2, 3, 4, 5])); // 2
+\`\`\`
+
+#### unshift()
+Adds items to the **start** (mutates). Returns the new length.
+
+\`\`\`javascript
+const unshiftData = (data) => {
+  data.unshift(1);
+  return data;
+};
+
+console.log(unshiftData([2, 3, 4, 5])); // [1, 2, 3, 4, 5]
+\`\`\`
+
+#### fill()
+Fills the array (or part of it) with one value, **in place** (mutates).
+
+\`\`\`javascript
+const fillData = (data) => {
+  return data.fill(0, 2);
+};
+
+console.log(fillData([2, 3, 4, 5])); // [2, 3, 0, 0]
+\`\`\`
+
+#### copyWithin()
+Copies part of the array to another position in the same array, **in place** (mutates).
+
+\`\`\`javascript
+const copyWithinData = (data) => {
+  return data.copyWithin(0, 2);
+};
+
+console.log(copyWithinData([2, 3, 4, 5])); // [4, 5, 4, 5]
+\`\`\`
+
+#### toSorted()
+Like \`sort()\`, but returns a **new sorted array** and leaves the original unchanged (ES2023).
+
+\`\`\`javascript
+const toSortedData = (data) => {
+  return data.toSorted((a, b) => a - b);
+};
+
+console.log(toSortedData([10, 1, 25, 2])); // [1, 2, 10, 25]
+\`\`\`
+
+#### toReversed()
+Like \`reverse()\`, but returns a **new array** (ES2023).
+
+\`\`\`javascript
+const toReversedData = (data) => {
+  return data.toReversed();
+};
+
+console.log(toReversedData([2, 3, 4, 5])); // [5, 4, 3, 2]
+\`\`\`
+
+#### toSpliced()
+Like \`splice()\`, but returns a **new array** with the change (ES2023).
+
+\`\`\`javascript
+const toSplicedData = (data) => {
+  return data.toSpliced(1, 2, 9);
+};
+
+console.log(toSplicedData([2, 3, 4, 5])); // [2, 9, 5]
+\`\`\`
+
+#### with()
+Returns a **new array** with the item at one index replaced (ES2023).
+
+\`\`\`javascript
+const withData = (data) => {
+  return data.with(0, 9);
+};
+
+console.log(withData([2, 3, 4, 5])); // [9, 3, 4, 5]
+\`\`\`
 
 #### Deeper version
 \`map\`, \`filter\`, \`reduce\`, \`slice\` and \`concat\` **do not change** the original array. But \`sort\`, \`reverse\`, \`splice\`, \`push\`, \`pop\` **do mutate** it. Newer copies exist: \`toSorted\`, \`toReversed\`, \`toSpliced\` and \`with\` (ES2023) — check browser/Node support for your target.
