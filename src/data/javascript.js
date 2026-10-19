@@ -2544,13 +2544,39 @@ In the second block, \`loose()\` has no object before the dot, so in strict mode
       priority: 'must',
       frequency: 'very common',
       summary: 'All three set this: call and apply run the function now (args listed vs array), bind returns a new function for later.',
-      what: `These three methods let you **choose** what \`this\` is when a function runs.
+      what: `All three let you **choose** what \`this\` points to when a function runs.
 
-- \`fn.call(obj, a, b)\` → runs \`fn\` **now** with \`this = obj\`, arguments listed one by one.
-- \`fn.apply(obj, [a, b])\` → runs \`fn\` **now**, arguments as an **array**.
-- \`fn.bind(obj, a)\` → does **not** run it. Returns a **new function** with \`this\` fixed to \`obj\` (and optionally some arguments pre-filled).
+#### call()
+Runs the function **right away**, with \`this\` set to the object you pass. Extra arguments are passed **one by one**, separated by commas.
 
-Memory trick: **A**pply = **A**rray, **C**all = **C**ommas.
+#### apply()
+Exactly like \`call()\`, but the extra arguments are passed together in **one array**.
+
+#### bind()
+Does **not** run the function. It gives you back a **new copy** of the function with \`this\` locked to the object, so you can run it later.
+
+Memory trick: **A**pply = **A**rray, **C**all = **C**ommas, **B**ind = **B**ack later.
+
+#### One example, all three
+\`\`\`javascript
+const user = { firstName: 'Tony', lastName: 'Stark' };
+
+function greet(greeting, punctuation) {
+  console.log(\`\${greeting}, I AM \${this.firstName} \${this.lastName}\${punctuation}\`);
+}
+
+// call: runs now, arguments one by one
+greet.call(user, 'Hello', '!');        // Hello, I AM Tony Stark!
+
+// apply: runs now, arguments in an array
+greet.apply(user, ['HEYYYY', '!']);    // HEYYYY, I AM Tony Stark!
+
+// bind: does not run; returns a new function to call later
+const fn = greet.bind(user);
+fn('wELCOMEEEE', '.....');             // wELCOMEEEE, I AM Tony Stark.....
+\`\`\`
+
+In every case \`this\` is \`user\`, so \`this.firstName\` is "Tony" and \`this.lastName\` is "Stark". The only differences are **when** the function runs and **how** you pass the arguments.
 
 #### Deeper version
 - A bound function's \`this\` is **permanent**: binding it again or using \`call\` on it does not change \`this\`. Only \`new\` overrides it.
