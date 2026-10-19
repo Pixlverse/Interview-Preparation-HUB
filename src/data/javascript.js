@@ -2355,9 +2355,31 @@ In the second block, the recursion never stops, so the stack grows until the eng
       priority: 'must',
       frequency: 'very common',
       summary: 'A function that remembers the variables from the place where it was created, even after that outer function has finished.',
-      what: `A **closure** is a function plus the variables it can "see" from where it was written.
+      what: `A **closure** is a function **plus the variables around it** from where it was written (its **lexical environment**).
 
-Normally, when a function finishes, its local variables are thrown away. But if an inner function still uses them, JavaScript keeps them alive. The inner function "closes over" those variables — that is why it is called a closure.
+In simple words: an inner function can still use the outer function's variables, **even after the outer function has finished running**.
+
+\`\`\`javascript
+function outerFunction() {
+  let outerVariable = "I am from the outer scope!";
+
+  function innerFunction() {
+    // Accesses outerVariable via the closure
+    console.log(outerVariable);
+  }
+
+  return innerFunction;
+}
+
+// outerFunction executes and returns the innerFunction definition
+const myClosure = outerFunction();
+
+// outerFunction has finished executing here, but...
+myClosure(); // Output: "I am from the outer scope!"
+\`\`\`
+
+#### Why does this work?
+Normally, when a function finishes, its local variables are thrown away. But \`innerFunction\` still uses \`outerVariable\`, so JavaScript **keeps that variable alive** in memory (the heap) instead of throwing it away. \`myClosure\` carries it along, like a backpack.
 
 #### Deeper version
 Every function in JavaScript keeps a hidden link to its **lexical environment** (the scope where it was defined, not where it is called). When the function runs, it looks up variables through this chain of scopes. As long as some function still holds that link, the garbage collector cannot free those variables.`,
@@ -3126,11 +3148,56 @@ In the second block, \`addItem\` returns a new array, so \`cart\` stays \`['book
       priority: 'must',
       frequency: 'very common',
       summary: 'Every object has a hidden link to another object (its prototype); missing properties are looked up along this prototype chain.',
-      what: `In JavaScript, objects can **inherit** from other objects directly. Every object has a hidden link called its **prototype**.
+      what: `A **prototype** is just another object that your object can borrow properties and methods from. **Prototypal inheritance** means linking one object to another, so the first can use what the second has.
 
-When you read \`obj.x\` and \`obj\` does not have \`x\`, JavaScript looks in \`obj\`'s prototype, then that object's prototype, and so on. This path is the **prototype chain**. It ends at \`Object.prototype\`, whose prototype is \`null\`.
+\`\`\`javascript
+const user = {
+  greet() {
+    console.log("Hello!");
+  }
+};
 
-That is why \`[1, 2].map\` works: \`map\` is not on your array; it lives on \`Array.prototype\`.
+// Create a student object that inherits from user
+const student = Object.create(user);
+
+student.greet(); // Outputs: "Hello!"
+\`\`\`
+
+\`student\` has no \`greet\` of its own. It borrows it from \`user\`, because \`user\` is its prototype.
+
+#### The hidden link: [[Prototype]]
+Every object has a hidden link to its prototype. You can read or change it with:
+- \`Object.getPrototypeOf(obj)\` → read it.
+- \`Object.setPrototypeOf(obj, proto)\` → change it.
+- \`obj.__proto__\` → the old way; still works, but prefer the two above.
+
+\`\`\`javascript
+console.log(Object.getPrototypeOf(student) === user); // true
+\`\`\`
+
+#### The prototype chain
+When you ask for a property, JavaScript:
+1. Looks on the object itself.
+2. If it is not there, looks on the object's prototype.
+3. Then the prototype's prototype, and so on.
+4. Stops when it finds it, or when it reaches \`null\` (then you get \`undefined\`).
+
+\`\`\`javascript
+// student → user → Object.prototype → null
+console.log(student.toString); // found on Object.prototype
+console.log(student.fly);      // undefined (not found anywhere)
+\`\`\`
+
+#### Object.prototype: the top of the chain
+Almost every object ends up at \`Object.prototype\` (that is where \`toString\` and \`hasOwnProperty\` live). Its own prototype is \`null\`, which marks the end of the chain.
+
+\`\`\`javascript
+console.log(Object.getPrototypeOf(user) === Object.prototype); // true
+console.log(Object.getPrototypeOf(Object.prototype));          // null
+\`\`\`
+
+#### Classes are just a nicer way to write this
+\`class\` does not add a new inheritance system. Under the hood it still uses prototypes: methods you write in a class are put on \`ClassName.prototype\`, and objects made with \`new\` link to it.
 
 #### Deeper version
 Three names that confuse people:
@@ -3708,11 +3775,65 @@ In the second block, the timeout (200ms) beats the slow data (500ms), so \`race\
       priority: 'good',
       frequency: 'common',
       summary: 'setTimeout runs once after at least X ms, setInterval repeats, requestAnimationFrame runs right before the next screen paint.',
-      what: `Three ways to schedule code for later:
+      what: `\`setTimeout\`, \`setInterval\` and \`requestAnimationFrame\` are the three main browser tools for running code **later**. They all deal with time, but each has its own job:
+- **Once, after a delay** → \`setTimeout\`
+- **Again and again** → \`setInterval\`
+- **Smooth animation on screen** → \`requestAnimationFrame\`
 
-- \`setTimeout(fn, ms)\`: run \`fn\` **once**, after **at least** \`ms\` milliseconds. Returns an id; cancel with \`clearTimeout(id)\`.
-- \`setInterval(fn, ms)\`: run \`fn\` **again and again** every \`ms\`. Cancel with \`clearInterval(id)\`.
-- \`requestAnimationFrame(fn)\` (rAF, browser only): run \`fn\` **right before the browser paints the next frame** — usually about 60 times a second. Cancel with \`cancelAnimationFrame(id)\`.
+#### 1. setTimeout
+Runs a function **once**, after a delay in milliseconds.
+
+The delay is the **minimum** wait, not an exact time. If JavaScript is busy with heavy work, the function waits until that work is done.
+
+\`\`\`javascript
+// Schedule a greeting after 2 seconds
+const timerId = setTimeout((user) => {
+  console.log(\`Hello, \${user}!\`);
+}, 2000, "Alice");
+
+// Cancel before it fires (if needed)
+clearTimeout(timerId);
+\`\`\`
+
+Extra values after the delay (here \`"Alice"\`) are passed into the function. Because we call \`clearTimeout\` straight away, nothing prints. Remove that line and you see \`Hello, Alice!\` after 2 seconds.
+
+#### 2. setInterval
+Runs a function **again and again**, every few milliseconds, until you stop it.
+
+If the function takes longer to run than the delay, the runs happen back-to-back with no break for the browser.
+
+\`\`\`javascript
+// Update a clock every second
+const intervalId = setInterval(() => {
+  console.log(new Date().toLocaleTimeString());
+}, 1000);
+
+// Stop the repetition after 5 seconds
+setTimeout(() => clearInterval(intervalId), 5000);
+\`\`\`
+
+The time prints once a second, about 4–5 times, then \`clearInterval\` stops it. Always clear an interval you no longer need.
+
+#### 3. requestAnimationFrame
+Runs a function **right before the browser draws the next frame** on screen (usually about 60 times a second). It is made for smooth animation, and it pauses when the tab is hidden.
+
+\`\`\`javascript
+// Move a box 300px to the right, smoothly
+const box = document.querySelector('.box');
+let x = 0;
+let frameId;
+
+function move() {
+  x += 5;
+  box.style.transform = \`translateX(\${x}px)\`;
+  if (x < 300) frameId = requestAnimationFrame(move); // ask for the next frame
+}
+
+frameId = requestAnimationFrame(move);
+// cancelAnimationFrame(frameId) stops it
+\`\`\`
+
+It runs only once per call, so to keep animating you call it again inside the function.
 
 #### Deeper version
 - The delay is a **minimum**, not a promise. The callback is a macrotask, so it waits for the call stack and all microtasks. Browsers clamp nested timers (after several levels) to about 4ms, and **background tabs** throttle timers heavily (often to once per second or less).
@@ -4295,12 +4416,59 @@ In the second block, memoized Fibonacci computes each \`n\` only once, so \`fib(
       priority: 'must',
       frequency: 'common',
       summary: 'Map = key/value with any key type; Set = unique values; Weak versions hold object keys weakly so they can be garbage collected.',
-      what: `Four built-in collections:
+      what: `\`Map\`, \`Set\`, \`WeakMap\` and \`WeakSet\` are built-in collections added in ES6. They store data better than plain objects and arrays for certain jobs.
 
-- **Map**: key → value pairs, like an object, but keys can be **any type** (objects, functions, numbers). Keeps insertion order. Has \`.size\`.
-- **Set**: a list of **unique** values. Adding a duplicate does nothing.
-- **WeakMap**: like Map, but keys must be **objects** and are held **weakly** — if nothing else references the key object, it can be garbage collected along with its value.
-- **WeakSet**: like Set, but only objects, held weakly.
+#### Map
+Stores **key → value** pairs, and **anything** can be a key (an object, a number, a function). Unlike objects, keys are **not turned into strings**.
+
+\`\`\`javascript
+const userMap = new Map();
+const objKey = { id: 1 };
+
+userMap.set(objKey, 'Admin');
+userMap.set('status', 'active');
+
+console.log(userMap.get(objKey)); // 'Admin'
+console.log(userMap.size); // 2
+\`\`\`
+
+#### Set
+Stores a list of **unique values**. Adding a value that is already there does nothing.
+
+\`\`\`javascript
+const tags = new Set(['js', 'css', 'js']);
+tags.add('html');
+
+console.log(tags.has('js')); // true
+console.log(tags.size); // 3 (duplicates removed)
+\`\`\`
+
+#### WeakMap
+Like a Map, but keys **must be objects**, and they are held **weakly**. If nothing else in your code uses the key object any more, JavaScript removes it from memory automatically (garbage collection), together with its value.
+
+\`\`\`javascript
+let domElement = { type: 'button' };
+const metadata = new WeakMap();
+
+metadata.set(domElement, { clicked: false });
+
+// If domElement is removed or overwritten:
+domElement = null;
+// The entry inside metadata will be automatically garbage-collected
+\`\`\`
+
+#### WeakSet
+Like a Set, but it only stores **objects**, held weakly. When an object has no other references left, it is cleaned up automatically. You **cannot loop** over a WeakSet, and it has **no \`.size\`**.
+
+\`\`\`javascript
+let activeConnections = new WeakSet();
+let socket = { id: 'w123' };
+
+activeConnections.add(socket);
+console.log(activeConnections.has(socket)); // true
+
+socket = null; // Cleaned from memory automatically
+\`\`\`
 
 #### Deeper version
 **Map vs object**:
