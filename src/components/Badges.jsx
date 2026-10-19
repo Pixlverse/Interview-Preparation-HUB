@@ -1,4 +1,5 @@
 import { LEVEL_LABEL, PRIORITY_LABEL } from '../data/index.js';
+import { FOCUS_KEYS } from '../lib/focus.js';
 
 const LEVEL_STYLE = {
   basic: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900',
@@ -41,9 +42,22 @@ export function FrequencyNote({ frequency }) {
   );
 }
 
+export function FocusBadge({ topicKey }) {
+  if (!FOCUS_KEYS.has(topicKey)) return null;
+  return (
+    <span
+      className={`${base} bg-orange-100 text-orange-800 ring-orange-300 dark:bg-orange-950/60 dark:text-orange-300 dark:ring-orange-800`}
+      title="On your interview focus list"
+    >
+      🔥 Interview focus
+    </span>
+  );
+}
+
 export function TopicBadges({ topic }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
+      <FocusBadge topicKey={topic.key} />
       <LevelBadge level={topic.level} />
       <PriorityBadge priority={topic.priority} />
       <FrequencyNote frequency={topic.frequency} />

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { allTopics, getStack, stacks } from '../data/index.js';
+import { FOCUS_KEYS } from '../lib/focus.js';
 import { useStudy } from '../context/StudyContext.jsx';
 import { applyFilters, DEFAULT_FILTERS } from '../lib/filters.js';
 import FilterBar from '../components/FilterBar.jsx';
@@ -25,6 +26,7 @@ export default function QuickRevisePage() {
   const base = useMemo(() => {
     if (source === 'all') return allTopics;
     if (source === 'bookmarks') return allTopics.filter((t) => bookmarks[t.key]);
+    if (source === 'focus') return allTopics.filter((t) => FOCUS_KEYS.has(t.key));
     return getStack(source)?.topics || [];
   }, [source, bookmarks]);
 
@@ -49,6 +51,7 @@ export default function QuickRevisePage() {
         >
           <option value="all">All stacks</option>
           <option value="bookmarks">★ Bookmarks only</option>
+          <option value="focus">🔥 Interview focus</option>
           {stacks.map((s) => (
             <option key={s.id} value={s.id}>
               {s.icon} {s.title}

@@ -715,12 +715,60 @@ The second script waits 100 ms and prints \`ready with 42\`.`,
       priority: 'must',
       frequency: 'common',
       summary: 'Node started with error-first callbacks; today we use promises and async/await, with util.promisify and fs/promises bridging old APIs.',
-      what: `Node APIs were first built with **error-first callbacks**: the last argument is a function \`(err, result) => {}\`. If \`err\` is not null, something failed.
+      what: `Callbacks, Promises and async/await are the three main ways to handle **async work** (work that finishes later, like reading a file or calling a database) in Node.js.
 
-Nesting many callbacks causes **callback hell** (code drifting to the right, hard error handling). **Promises** and **async/await** fix this.
+#### 1. Callbacks
+A **callback** is a function you pass into another function. It runs when the async task is done.
 
-- \`util.promisify(fn)\` turns an error-first callback function into a promise-returning one.
-- Many core modules have promise versions: \`node:fs/promises\`, \`node:timers/promises\`, \`node:stream/promises\`, \`node:dns/promises\`.
+Node uses **error-first callbacks**: the first parameter is the error (or \`null\` if all went well), and the next parameters hold the result.
+
+\`\`\`javascript
+const fs = require('node:fs');
+
+fs.readFile('notes.txt', 'utf8', (err, data) => {
+  if (err) return console.error('Failed:', err.message);
+  console.log(data); // file contents
+});
+\`\`\`
+
+Nesting many callbacks inside each other leads to **callback hell**: code that drifts to the right and is hard to read.
+
+#### 2. Promises
+A **Promise** is an object that stands for a result that will come **later**. It either succeeds (resolves) with a value or fails (rejects) with an error.
+
+\`\`\`javascript
+const fs = require('node:fs/promises');
+
+fs.readFile('notes.txt', 'utf8')
+  .then((data) => console.log(data))              // success
+  .catch((err) => console.error('Failed:', err.message)); // failure
+\`\`\`
+
+#### 3. async/await
+**async/await** is a nicer way to write Promises. It makes async code read like normal top-to-bottom code.
+- An \`async\` function **always returns a Promise**.
+- \`await\` **pauses** the function until the Promise finishes, then gives you the value.
+
+\`\`\`javascript
+const fs = require('node:fs/promises');
+
+async function readNotes() {
+  try {
+    const data = await fs.readFile('notes.txt', 'utf8'); // waits here
+    console.log(data);
+  } catch (err) {
+    console.error('Failed:', err.message);
+  }
+}
+
+readNotes();
+\`\`\`
+
+All three do the same job. The difference is how the code looks and how you handle errors: \`err\` first in callbacks, \`.catch()\` with Promises, \`try/catch\` with async/await.
+
+#### Turning old callbacks into Promises
+- \`util.promisify(fn)\` turns an error-first callback function into one that returns a Promise.
+- Many core modules have Promise versions: \`node:fs/promises\`, \`node:timers/promises\`, \`node:stream/promises\`, \`node:dns/promises\`.
 
 #### Deeper version
 - \`await\` inside a \`for\` loop runs things **one by one**. Use \`Promise.all\` for parallel work, \`Promise.allSettled\` when some may fail, and a limit (like \`p-limit\`) when there are thousands of items so you don't overload the DB.

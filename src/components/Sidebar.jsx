@@ -4,6 +4,7 @@ import { stacks } from '../data/index.js';
 import { useStudy } from '../context/StudyContext.jsx';
 import ProgressBar from './ProgressBar.jsx';
 import { LEVEL_DOT } from './Badges.jsx';
+import { FOCUS_KEYS } from '../lib/focus.js';
 
 const navCls = ({ isActive }) =>
   `flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium ${
@@ -38,6 +39,12 @@ export default function Sidebar({ onNavigate }) {
       <div className="space-y-0.5 border-b border-slate-200 p-3 dark:border-slate-800">
         <NavLink to="/" end className={navCls} onClick={onNavigate}>
           🏠 Dashboard
+        </NavLink>
+        <NavLink to="/focus" className={navCls} onClick={onNavigate}>
+          🔥 Interview Focus
+          <span className="ml-auto rounded-full bg-orange-100 px-1.5 text-xs text-orange-700 dark:bg-orange-900/50 dark:text-orange-300">
+            {FOCUS_KEYS.size}
+          </span>
         </NavLink>
         <NavLink to="/revise" className={navCls} onClick={onNavigate}>
           🃏 Quick Revise
@@ -138,6 +145,11 @@ export default function Sidebar({ onNavigate }) {
                               title={t.level}
                             />
                             <span className="truncate">{t.title}</span>
+                            {FOCUS_KEYS.has(t.key) && (
+                              <span className="shrink-0 text-[11px]" title="Interview focus">
+                                🔥
+                              </span>
+                            )}
                             {learned[t.key] && <span className="ml-auto text-emerald-500">✓</span>}
                           </Link>
                         </li>

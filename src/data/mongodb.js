@@ -2798,6 +2798,101 @@ The first query finds active candidates of this tenant whose summary or name mat
       takeaway: 'For real user-facing search on Atlas, use `$search` with explicit mappings, `compound` logic and tenant filters in `filter`.',
     },
     {
+      id: 'atlas-vector-search-rag',
+      title: 'Atlas Vector Search: RAG on MongoDB',
+      level: 'advanced',
+      priority: 'good',
+      frequency: 'common',
+      summary: 'Store embeddings next to your documents and use $vectorSearch to find the most similar chunks, then send them to the LLM — RAG without a separate vector database.',
+      tags: ['rag', 'embeddings', 'vectorSearch', 'genai', 'llm'],
+      what: `**Atlas Vector Search** lets MongoDB find documents by **meaning**, not exact words. It is the "retrieve" step of **RAG** (Retrieval-Augmented Generation).
+
+How RAG on MongoDB works, in 4 steps:
+1. **Embed:** turn each chunk of your text into an **embedding** (a list of numbers that captures its meaning) using an embedding model.
+2. **Store:** save the embedding in the same document as the text, e.g. \`{ text, embedding: [0.12, -0.03, ...] }\`.
+3. **Search:** when a user asks a question, embed the question and run \`$vectorSearch\` to get the most similar chunks.
+4. **Generate:** put those chunks into the prompt and ask the LLM to answer **only from them**.
+
+#### Deeper version
+- You create a **vector search index** on the embedding field, with the number of **dimensions** (must match your embedding model, e.g. 1536) and a **similarity** (\`cosine\`, \`dotProduct\` or \`euclidean\`).
+- \`$vectorSearch\` must be the **first stage** of the pipeline. \`numCandidates\` is how many neighbours to look at; \`limit\` is how many to return. More candidates = better recall but slower (it is an approximate nearest neighbour search).
+- Add a \`filter\` (e.g. \`tenantId\`) inside \`$vectorSearch\` so users only search their own data. Filter fields must be declared in the index.
+- Use \`{ $meta: 'vectorSearchScore' }\` to see how close each match is.
+- You must use the **same embedding model** for the stored chunks and the question. Changing models means re-embedding everything.
+- Like Atlas Search, the index syncs **asynchronously**, so brand-new documents appear after a short delay.`,
+      why: `If your app already uses MongoDB, Vector Search keeps your text, metadata and embeddings in **one database**. No separate vector store to sync, and you can filter by tenant, status or date in the same query. It lets an LLM answer from **your** data (docs, resumes, tickets) instead of guessing.`,
+      analogy: `A normal index is like finding a book by its exact title. Vector search is like asking a librarian "I want something about feeling homesick" — they bring the books with the closest meaning, even if none has that exact phrase. RAG then hands those books to the LLM so it answers from them.`,
+      code: [
+        {
+          title: 'Vector index definition (Atlas)',
+          lang: 'json',
+          code: `{
+  "fields": [
+    { "type": "vector", "path": "embedding", "numDimensions": 1536, "similarity": "cosine" },
+    { "type": "filter", "path": "tenantId" }
+  ]
+}`,
+        },
+        {
+          title: 'Retrieve chunks and answer with an LLM',
+          lang: 'javascript',
+          code: `// 1. Embed the question (same model used for the stored chunks)
+const question = 'How many leave days do new employees get?';
+const queryVector = await embed(question); // e.g. OpenAI text-embedding-3-small → 1536 numbers
+
+// 2. Find the 5 most similar chunks for this tenant
+const chunks = await Doc.aggregate([
+  {
+    $vectorSearch: {
+      index: 'doc_vector_index',
+      path: 'embedding',
+      queryVector,
+      numCandidates: 100, // look at 100 neighbours
+      limit: 5,           // return the best 5
+      filter: { tenantId },
+    },
+  },
+  { $project: { text: 1, score: { $meta: 'vectorSearchScore' } } },
+]);
+
+// 3. Ask the LLM to answer only from those chunks
+const context = chunks.map((c) => c.text).join('\\n---\\n');
+const answer = await llm({
+  system: 'Answer only from the context. If the answer is not there, say you do not know.',
+  user: \`Context:\\n\${context}\\n\\nQuestion: \${question}\`,
+});`,
+        },
+      ],
+      output: `The question is turned into a vector. \`$vectorSearch\` compares it with the stored chunk vectors for that tenant and returns the 5 closest, each with a similarity score. Those 5 chunks are joined into the prompt, and the LLM answers from them, saying "I don't know" if the answer is not in the context.`,
+      questions: [
+        {
+          q: 'What is RAG?',
+          a: 'Retrieval-Augmented Generation: first retrieve relevant chunks from your own data, then send them to the LLM with the question so it answers from them. It reduces hallucinations and works with private or fresh data.',
+        },
+        {
+          q: 'What is an embedding?',
+          a: 'A list of numbers that represents the meaning of a piece of text. Texts with similar meaning have vectors that are close together.',
+        },
+        {
+          q: 'Why use Atlas Vector Search instead of a separate vector DB?',
+          a: 'If the data is already in MongoDB, you keep text, metadata and vectors together, avoid a sync pipeline, and can filter (tenant, date) in the same query. A dedicated vector DB may make sense at very large scale or for special features.',
+        },
+        {
+          q: 'What are numCandidates and limit?',
+          a: '`numCandidates` is how many nearest neighbours the search considers; `limit` is how many it returns. A higher `numCandidates` improves accuracy but costs speed.',
+        },
+      ],
+      spoken: `"For RAG on MongoDB I split documents into chunks, create an embedding for each chunk and store it in the same document as the text. I add an Atlas vector search index on that field with the right dimensions and cosine similarity. When a user asks something, I embed the question with the same model, run a vectorSearch stage with a tenant filter to get the top few chunks, and pass them to the LLM with an instruction to answer only from that context. That keeps everything in one database and cuts hallucinations."`,
+      mistakes: [
+        'Using a different embedding model for the question than for the stored chunks — the vectors are not comparable.',
+        'Setting `numDimensions` in the index different from the model output — the search fails.',
+        'Forgetting the tenant filter, so one customer\'s data can show up in another\'s answers.',
+        'Sending whole documents instead of small chunks — results get less precise and the prompt gets expensive.',
+        'Follow-up trap: "The answer is wrong even though the data exists — what do you check?" Check chunk size, whether the right chunks were retrieved (log scores), numCandidates, and whether the prompt tells the model to use the context.',
+      ],
+      takeaway: 'RAG on MongoDB = embed chunks, store vectors with the text, $vectorSearch with a tenant filter, then let the LLM answer only from what was retrieved.',
+    },
+    {
       id: 'schema-design-patterns',
       title: 'Schema Design Patterns (Computed, Bucket, Subset, Outlier, Extended Reference)',
       level: 'advanced',
