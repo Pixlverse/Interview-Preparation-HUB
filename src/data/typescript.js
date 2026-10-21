@@ -160,12 +160,46 @@ greet(employee); // OK: extra "salary" is allowed from a variable
       priority: 'must',
       frequency: 'very common',
       summary: 'Both describe object shapes. interface can be extended and merged; type can also describe unions, tuples and other complex types.',
-      what: `Both \`type\` and \`interface\` give a name to a shape.
+      what: `\`interface\` and \`type\` (a **type alias**) are very similar, and most of the time you can use either one. The main differences are what they can describe and **how they extend** another shape.
 
-- \`interface\` describes **objects** (and classes). It uses \`extends\` to build on another interface.
-- \`type\` (a **type alias**) can name **anything**: objects, unions (\`'a' | 'b'\`), tuples, primitives, functions, mapped and conditional types.
+#### interface: extends
+Interfaces build on each other with the \`extends\` keyword (like inheritance in classes). If a property clashes, TypeScript **shows an error** straight away.
 
-For a simple object, both work the same.
+\`\`\`typescript
+interface Animal {
+  name: string;
+}
+
+interface Dog extends Animal {
+  breed: string;
+}
+
+// Clash: name was string, now number
+interface Cat extends Animal {
+  name: number; // ❌ Error: Interface 'Cat' incorrectly extends interface 'Animal'
+}
+\`\`\`
+
+#### type: & (intersection)
+Types combine with \`&\` ("this **and** that"). If a property clashes, there is **no error at that line**. TypeScript quietly merges them, and the property can become \`never\` (a type no value can have).
+
+\`\`\`typescript
+type Animal = {
+  name: string;
+};
+
+type Dog = Animal & {
+  breed: string;
+};
+
+// Clash: name is string & number → never
+type Cat = Animal & { name: number };
+const tom: Cat = { name: 'Tom' }; // ❌ Error only here: 'string' is not assignable to 'never'
+\`\`\`
+
+#### Quick rule
+- Describing an **object or class shape**? Either works; many teams prefer \`interface\`.
+- Need a **union**, tuple or other complex type (\`'admin' | 'user'\`)? Only \`type\` can do it.
 
 #### Deeper version
 Key differences:
