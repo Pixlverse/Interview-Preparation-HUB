@@ -20,15 +20,34 @@ Plain Node can build a server too, but Express removes the boilerplate and gives
       priority: 'must',
       frequency: 'very common',
       summary: 'A small, unopinionated web framework for Node.js that gives you routing and middleware on top of the built-in http module.',
-      what: `**Express** is a small library that helps you build web servers and APIs with Node.js.
+      what: `**Express** (also called **Express.js**) is a **fast, minimal and flexible** back-end framework for building web servers and APIs, built **on top of Node.js**.
 
-Node.js already has a built-in \`http\` module, but it is very low-level. You have to read the URL yourself, parse the body yourself, and set headers yourself. Express gives you three simple things on top:
+Node.js already has a built-in \`http\` module, but it is very low-level: you read the URL, parse the body and set headers yourself. Express does that work for you.
 
-- **Routing**: "when a GET request comes to \`/users\`, run this function".
-- **Middleware**: small functions that run one after another for every request (logging, auth, parsing JSON).
-- **Helpers** on \`req\` (request) and \`res\` (response), like \`res.json()\` and \`req.params\`.
+#### Key features
 
-Express is **unopinionated**. That means it does not force a folder structure, a database, or a style. You decide.
+**1. Routing:** connects an HTTP method (\`GET\`, \`POST\`, \`PUT\`, \`DELETE\`) and a URL path to the function that should handle it.
+
+\`\`\`javascript
+app.get('/users', (req, res) => res.json(users));        // read
+app.post('/users', (req, res) => res.status(201).json(req.body)); // create
+app.delete('/users/:id', (req, res) => res.sendStatus(204));      // delete
+\`\`\`
+
+**2. Middleware:** functions that run **in between** the request arriving and the response going out. They handle jobs like logging, checking login (auth), reading the request body, and handling errors. Each one calls \`next()\` to pass the request on.
+
+\`\`\`javascript
+app.use(express.json()); // read JSON bodies
+
+app.use((req, res, next) => {
+  console.log(req.method, req.url); // log every request
+  next();                           // pass it on
+});
+\`\`\`
+
+**3. APIs and web apps:** the same framework is used for **REST APIs**, single-page apps, multi-page (server-rendered) apps and hybrids of both.
+
+Express is also **unopinionated**: it does not force a folder structure, a database or a style. You decide.
 
 #### Deeper version
 \`express()\` returns an \`app\` object. This \`app\` is actually a plain function with the shape \`(req, res) => {}\`. That is why you can pass it to \`http.createServer(app)\` or \`https.createServer(options, app)\`. \`app.listen(port)\` is just a shortcut that does \`http.createServer(app).listen(port)\` and returns the Node \`http.Server\`.
@@ -312,7 +331,30 @@ In the bad example, when \`q\` is missing the handler sends a 400 and then keeps
       priority: 'must',
       frequency: 'very common',
       summary: 'Functions (req, res, next) that run in order for each request. They can change req/res, end the request, or pass control with next().',
-      what: `**Middleware** is a function with the shape \`(req, res, next)\`. Express runs middleware **in the order you add it**. Each one can:
+      what: `**Middleware** is a function that runs **in the middle** of a request: after the request arrives, and before the final route handler sends the response.
+
+Every middleware gets three things:
+- \`req\`: the **request** (what the user sent).
+- \`res\`: the **response** (what you send back).
+- \`next\`: a function that **passes control** to the next middleware or route.
+
+\`\`\`javascript
+// A logger middleware
+const logger = (req, res, next) => {
+  console.log(req.method, req.url); // e.g. GET /users
+  next();                           // hand over to the next function
+};
+
+app.use(logger); // runs for every request
+
+app.get('/users', (req, res) => {
+  res.json([{ id: 1, name: 'Asha' }]); // final route handler
+});
+
+// Request flow: request → logger → GET /users handler → response
+\`\`\`
+
+Express runs middleware **in the order you add it**. Each one can:
 
 1. Run any code (log, measure time).
 2. Change \`req\` or \`res\` (add \`req.user\`).
@@ -424,16 +466,37 @@ app.listen(3000);`,
       priority: 'must',
       frequency: 'common',
       summary: 'Request bodies arrive as a stream of bytes. Body-parser middleware reads them and fills req.body based on the Content-Type.',
-      what: `When a client sends data (POST, PUT, PATCH), the body comes in **pieces** as a stream. Express does **not** read it by default, so \`req.body\` is empty until you add a **body parser**.
+      what: `**Body parsers** are built-in Express middleware. They catch the incoming request, **read its body** (the data the client sent), and put the result on \`req.body\`. **Without them, \`req.body\` is \`undefined\`.**
 
-Express has built-in parsers (since 4.16, so you no longer need the separate \`body-parser\` package):
+#### 1. express.json(options)
+For **JSON** bodies (\`Content-Type: application/json\`).
+- \`limit\`: the **maximum body size**, e.g. \`'1mb'\`. Bigger bodies are rejected.
+- \`strict\`: \`true\` by default. Only accepts **objects and arrays**, and rejects a plain top-level value like a raw string or number.
 
-- \`express.json()\` → for \`Content-Type: application/json\`.
-- \`express.urlencoded({ extended: false })\` → for HTML form posts (\`a=1&b=2\`).
-- \`express.raw({ type: '...' })\` → gives you a \`Buffer\` (used for Stripe webhooks).
-- \`express.text()\` → gives you a plain string.
+\`\`\`javascript
+app.use(express.json({ limit: '500kb' }));
+\`\`\`
 
-File uploads (\`multipart/form-data\`) are **not** handled by these. Use \`multer\` for that.
+#### 2. express.urlencoded(options)
+For **HTML form** posts (\`name=Asha&city=Kochi\`).
+- \`extended\`: picks which library reads the form string.
+  - \`false\`: uses Node's built-in \`querystring\`. **No nested objects.**
+  - \`true\` (recommended): uses the \`qs\` library, so nested objects like \`user[name]=Asha\` work.
+
+\`\`\`javascript
+app.use(express.urlencoded({ extended: true }));
+\`\`\`
+
+#### 3. express.raw(options)
+Gives you the body **as-is**, as a \`Buffer\` (raw bytes), without parsing it.
+- \`type\`: which \`Content-Type\` it should catch. Default is \`application/octet-stream\`.
+
+\`\`\`javascript
+// Intercept text/csv and expose the unparsed buffer directly
+app.use(express.raw({ type: 'text/csv' }));
+\`\`\`
+
+There is also \`express.text()\`, which gives you the body as a plain string. File uploads (\`multipart/form-data\`) are **not** handled by any of these. Use \`multer\` for that.
 
 #### Deeper version
 Each parser checks the request's \`Content-Type\`. If it does not match, the parser just calls \`next()\` and leaves \`req.body\` alone. That is why a client that forgets the \`Content-Type: application/json\` header gets an empty body.
