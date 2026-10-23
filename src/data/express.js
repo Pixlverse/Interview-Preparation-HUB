@@ -1014,10 +1014,57 @@ In Express 5 the same code works with no wrapper, because Express itself attache
 
 Never trust the client. Front-end validation is only for user experience; anyone can call your API with curl.
 
-Popular libraries:
-- **zod**: TypeScript-first. You write one schema and get both runtime checks and a TS type (\`z.infer\`).
-- **Joi**: older, very powerful schema library, plain JS.
-- **express-validator**: a chain of middleware like \`body('email').isEmail()\`, built on validator.js.
+#### Zod vs Joi vs express-validator
+All three are top choices for Express, but they work in **different ways**.
+
+**Zod:** schema-first and **built for TypeScript**. You write one schema, and Zod gives you the TypeScript type from it **automatically**.
+
+\`\`\`typescript
+import { z } from 'zod';
+
+const UserSchema = z.object({
+  email: z.string().email(),
+  age: z.number().int().min(13),
+});
+
+type User = z.infer<typeof UserSchema>; // { email: string; age: number } — no extra type to write
+
+const result = UserSchema.safeParse(req.body);
+if (!result.success) return res.status(400).json(result.error.issues);
+\`\`\`
+
+**Joi:** older and very mature, long popular in Node.js. You describe the data as a **blueprint** (schema), but it **does not give you TypeScript types** on its own; you write those separately.
+
+\`\`\`javascript
+import Joi from 'joi';
+
+const userSchema = Joi.object({
+  email: Joi.string().email().required(),
+  age: Joi.number().integer().min(13),
+});
+
+const { error, value } = userSchema.validate(req.body, { abortEarly: false });
+if (error) return res.status(400).json(error.details);
+\`\`\`
+
+**express-validator:** made **only for Express**. It is a set of middleware built on validator.js. You check and clean (**sanitize**) fields **one by one, right on the route**.
+
+\`\`\`javascript
+import { body, validationResult } from 'express-validator';
+
+app.post(
+  '/users',
+  body('email').isEmail().normalizeEmail(), // check + clean
+  body('age').isInt({ min: 13 }),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json(errors.array());
+    res.status(201).json(req.body);
+  }
+);
+\`\`\`
+
+**Which one?** TypeScript project → **Zod**. Existing JS codebase that already uses it → **Joi**. Simple Express-only checks and sanitising per route → **express-validator**.
 
 #### Deeper version
 Validate at the **edge** (in a middleware, before the controller). Then the controller and service can trust the data.
@@ -1355,17 +1402,44 @@ app.use(errorHandler);
       priority: 'must',
       frequency: 'common',
       summary: 'Split each request into layers: the controller handles HTTP, the service holds business rules, the repository talks to the database. Each layer only knows the one below it.',
-      what: `**MVC** means Model–View–Controller:
-- **Model**: the data and its rules (a Mongoose model).
-- **View**: what the user sees (HTML templates; in an API, the JSON response).
+      what: `**MVC** (Model–View–Controller) and the **layered architecture** (Controller–Service–Repository) **work together** to keep a backend clean as it grows.
+
+**MVC** splits an app into three parts:
+- **Model**: the data and its rules (e.g. a Mongoose model).
+- **View**: what the user sees (HTML; in an API, the JSON response).
 - **Controller**: receives the request and coordinates.
 
-For APIs, teams usually go further with a **layered architecture**:
+**The problem:** in pure MVC, everything ends up in the controller or the model. Controllers become huge ("**fat controllers**") and models get overloaded. So teams add **three layers**, each with **one job**.
 
-1. **Route** — maps URL + method to a controller, adds middleware (auth, validate).
-2. **Controller** — the HTTP layer. Reads \`req\`, calls a service, sends \`res\`. No business rules, no DB queries.
-3. **Service** — the business logic. "A user cannot have two active subscriptions." Knows nothing about \`req\` or \`res\`.
-4. **Repository / Model** — the data layer. Only database queries.
+- **Controller** (the MVC Controller): handles the HTTP / API endpoint. It is the **gatekeeper**: reads \`req\`, sends \`res\`.
+- **Service** (the Model's **logic**): the **business rules**. It does not care how the request arrived or where the data is stored.
+- **Repository** (the Model's **data**): the **data access** layer (DAO). It hides the database from the business logic.
+
+#### How the data flows
+\`\`\`text
+Client request  →  Controller  →  Service  →  Repository  →  Database
+Client response ←  Controller  ←  Service  ←  Repository  ←  Database
+\`\`\`
+
+\`\`\`javascript
+// Repository: only talks to the database
+const userRepo = {
+  findByEmail: (email) => User.findOne({ email }),
+  create: (data) => User.create(data),
+};
+
+// Service: only business rules
+async function registerUser(data) {
+  if (await userRepo.findByEmail(data.email)) throw new AppError('Email already used', 409);
+  return userRepo.create(data);
+}
+
+// Controller: only HTTP
+async function register(req, res) {
+  const user = await registerUser(req.body);
+  res.status(201).json(user);
+}
+\`\`\`
 
 #### Deeper version
 The key rule is **dependency direction**: controller → service → repository. Lower layers never import upper ones. A service never touches \`res\`; it returns data or throws an \`AppError\`.
@@ -1615,13 +1689,38 @@ In the second example, \`req.cookies.theme\` is "dark". If a user edits the sign
       summary: 'Issue a signed token on login, verify it in an auth middleware that sets req.user, and check roles or ownership in a second middleware or the service.',
       what: `**Authentication** = "who are you?" **Authorization** = "what are you allowed to do?"
 
-A **JWT (JSON Web Token)** is a signed string with three parts: \`header.payload.signature\`. The payload holds claims like \`{ sub: userId, role: 'admin', exp: ... }\`. The server signs it with a secret. Later, it can **verify** the signature to trust the payload without a database lookup.
+A **JWT auth middleware** checks both **without storing sessions** on the server. The client sends a **signed token** in the header \`Authorization: Bearer <token>\`, and the middleware checks that the signature is real.
 
-Flow in Express:
-1. \`POST /login\` → check password → \`jwt.sign(payload, secret, { expiresIn: '15m' })\`.
-2. Client sends it back as \`Authorization: Bearer <token>\` (or in a cookie).
-3. An \`auth\` middleware verifies it and sets \`req.user\`.
-4. An \`authorize('admin')\` middleware checks the role.
+A **JWT (JSON Web Token)** has three parts: \`header.payload.signature\`. The payload holds claims like \`{ sub: userId, role: 'admin', exp: ... }\`. Because it is signed, the server can trust it **without a database lookup**.
+
+#### How the middleware works
+1. **Extract:** read the token from the \`Authorization: Bearer <token>\` header (or a cookie).
+2. **Verify:** check the signature with the secret (or public key), and check it has not **expired** (\`exp\`).
+3. **Attach:** if valid, put the decoded user data (\`sub\`, \`email\`, \`role\`) on \`req.user\`.
+4. **Authorize:** later middleware or the route checks \`req.user\` (role, \`isAdmin\`) and allows or blocks the request: **401 Unauthorized** (not logged in / bad token) or **403 Forbidden** (logged in, but not allowed).
+
+\`\`\`javascript
+import jwt from 'jsonwebtoken';
+
+export function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
+
+  if (!token) {
+    return res.status(401).json({ message: 'Token missing' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ message: 'Invalid or expired token' });
+    }
+    req.user = decoded; // Attach payload to request
+    next();
+  });
+}
+\`\`\`
+
+**Interview tip:** many teams return **401** (not 403) for an invalid or expired token, because the user is not authenticated. Keep **403** for "you are logged in but not allowed". Also pass \`{ algorithms: ['HS256'] }\` to \`jwt.verify\` so a token cannot choose its own algorithm.
 
 #### Deeper version
 - The payload is **base64url-encoded, not encrypted**. Anyone can read it. Never put passwords or secrets inside.
