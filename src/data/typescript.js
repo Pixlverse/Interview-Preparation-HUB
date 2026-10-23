@@ -1181,11 +1181,57 @@ function cartReducer(cart: Cart, action: CartAction): Cart {
       priority: 'must',
       frequency: 'very common',
       summary: 'keyof gets the keys of a type as a union. typeof (in a type position) gets the type of a value. T[K] gets the type of a property.',
-      what: `Three small operators that let you **build types from other types or values**:
+      what: `\`typeof\`, \`keyof\` and **indexed access** are three small operators that **pull types out of your existing code**. Use them together and your types **update automatically** when your data changes.
 
-- \`keyof T\` gives a **union of the keys** of type \`T\`. For \`{ name: string; age: number }\` it is \`'name' | 'age'\`.
-- \`typeof value\` (used in a **type** position) gives the **type of a JavaScript value**. Great for getting a type from a config object or a function.
-- \`T[K]\` — **indexed access** — gives the type of property \`K\` on \`T\`. \`User['email']\` is \`string\`.
+#### 1. typeof (value → type)
+Takes a normal JavaScript **variable** and gives you its **type**.
+
+\`\`\`typescript
+const AppConfig = {
+  theme: "dark",
+  timeout: 5000,
+};
+
+// Extracts the structure as a type
+type Config = typeof AppConfig;
+// Result: { theme: string; timeout: number; }
+\`\`\`
+
+#### 2. keyof (type → union of keys)
+Takes an object **type** and gives you a **union of its keys**.
+
+\`\`\`typescript
+type User = { id: number; name: string; email: string };
+
+type UserKeys = keyof User;
+// Result: "id" | "name" | "email"
+\`\`\`
+
+#### 3. Indexed access (type + key → property type)
+Looks up the **type of one property** using brackets: \`Type[Key]\`. Inside the brackets you must put a **type**, not a variable.
+
+\`\`\`typescript
+type User = { id: number; name: string; active: boolean };
+
+type NameType = User["name"]; // Result: string
+type StatusType = User["active"]; // Result: boolean
+
+const key = "name";
+// type Bad = User[key];      // ❌ Error: 'key' refers to a value, but is being used as a type
+type Good = User[typeof key]; // ✅ string
+\`\`\`
+
+#### All three together
+\`\`\`typescript
+// K can only be a real key of Config, and the return type follows the key
+function getConfig<K extends keyof Config>(key: K): Config[K] {
+  return AppConfig[key];
+}
+
+getConfig("timeout"); // number
+getConfig("theme");   // string
+getConfig("color");   // ❌ Error: not a key of Config
+\`\`\`
 
 #### Deeper version
 - JavaScript also has a runtime \`typeof\` (returns \`"string"\`, \`"object"\`...). TS decides which one you mean by **position**: after \`:\` or in a \`type\` it is the type operator; in normal code it is the JS operator.
