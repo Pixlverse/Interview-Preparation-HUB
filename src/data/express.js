@@ -1691,7 +1691,27 @@ In the second example, \`req.cookies.theme\` is "dark". If a user edits the sign
 
 A **JWT auth middleware** checks both **without storing sessions** on the server. The client sends a **signed token** in the header \`Authorization: Bearer <token>\`, and the middleware checks that the signature is real.
 
-A **JWT (JSON Web Token)** has three parts: \`header.payload.signature\`. The payload holds claims like \`{ sub: userId, role: 'admin', exp: ... }\`. Because it is signed, the server can trust it **without a database lookup**.
+A **JWT (JSON Web Token)** is used to **securely log users in** and **share information** between a client (like a browser) and a server.
+
+#### What a JWT looks like
+A long string in **three parts separated by two dots**: \`xxxxx.yyyyy.zzzzz\`. Each part is Base64Url-encoded.
+
+1. **Header:** details about the token: its type (\`JWT\`) and the signing algorithm (e.g. \`HS256\`).
+2. **Payload:** the actual data, called **claims**: \`userId\`, \`username\`, \`role\`, \`exp\`. It is only **encoded, not encrypted**: anyone can decode and read it. **Never put passwords or sensitive data here.**
+3. **Signature:** the **security guard**. The server mixes the header, the payload and a **secret key only it knows** into a signature. If anyone changes the payload, the signature no longer matches and the server **rejects** the token.
+
+\`\`\`text
+eyJhbGciOiJIUzI1NiJ9 . eyJ1c2VySWQiOjEsInJvbGUiOiJhZG1pbiJ9 . SflKxwRJSMeKKF2QT4fwpM
+      header                        payload                         signature
+\`\`\`
+
+#### Why Node.js developers prefer JWT over sessions
+- **Storage:** sessions live on the **server** (RAM or Redis). JWTs live on the **client** (browser or mobile storage).
+- **Scalability:** with sessions, many servers must **share session data**. With JWT, **any server** can check the token on its own using the secret key.
+- **Performance:** sessions need a **database lookup on every request**. JWT is checked with **maths on the signature**, no database call.
+- **Architecture:** sessions suit **monolithic** web apps. JWT suits **APIs, mobile apps and microservices**.
+
+**Trade-off to mention:** a JWT stays valid until it expires, so **logging someone out early is harder** than deleting a session. That is why access tokens are kept short-lived (see Deeper version).
 
 #### How the middleware works
 1. **Extract:** read the token from the \`Authorization: Bearer <token>\` header (or a cookie).
