@@ -1,3 +1,7 @@
 node_modules
 dist
 .DS_Store
+
+# Company source code used only for local reference — never commit or publish
+octagnt/
+skillkeepr/
