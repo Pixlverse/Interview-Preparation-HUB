@@ -1868,6 +1868,289 @@ function Avatar() {
       ],
     },
     {
+      id: 'slow-api-and-extra-rerenders',
+      title: 'Scenario: the API takes 5 s and the component re-renders many times',
+      difficulty: 'medium',
+      type: 'scenario',
+      frequency: 'very common',
+      relatedTopic: 'performance-optimization',
+      question: `The Orders page feels slow. The API call takes about **5 seconds**, and when you add a \`console.log\` in the component you see it render many times (sometimes the request is even sent more than once).
+
+\`\`\`jsx
+function Orders({ userId }) {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const filters = { userId, status: 'open' }; // new object every render
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(\`/api/orders?\${new URLSearchParams(filters)}\`)
+      .then((r) => r.json())
+      .then((data) => {
+        setOrders(data);
+        setLoading(false);
+      });
+  }, [filters]);
+
+  if (loading) return <Spinner />;
+  return <OrderTable orders={orders} />;
+}
+\`\`\`
+
+How would you identify and fix the performance problem?`,
+      hints: [
+        'There are two separate problems: a slow **server** and extra **renders/requests** in the browser. Measure each one on its own.',
+        'Look at the effect dependency. Is `filters` the same object on the next render?',
+        'For the 5 s: is the time spent waiting for the server (TTFB) or downloading a huge response? Then look at the query on the server.',
+      ],
+      solution: `**Idea:** split it into two problems and **measure before fixing**: (1) why does the server take 5 s, (2) why does the component render and fetch more than needed.
+
+**Step 1 — Measure.**
+- **Network tab:** how many \`/api/orders\` requests fire? Click one → Timing. Long "Waiting for server response" (TTFB) = slow backend. Long "Content download" = response too big.
+- **React DevTools Profiler** (with "Highlight updates" on): which components render, how often, and why ("What caused this update?").
+- Remember: in development **StrictMode** renders twice and runs effects twice on purpose. Check the count in a production build before calling it a bug.
+
+**Step 2 — Fix the extra renders and requests in React.**
+
+The bug here is a **render → fetch loop**: \`filters\` is a new object on every render, so the effect runs after every render; \`setOrders\` causes a render; a new \`filters\` runs the effect again. Fix: depend on **primitive values**, cancel stale requests, and let a data library cache and dedupe:
+
+\`\`\`jsx
+import { useQuery } from '@tanstack/react-query';
+
+function Orders({ userId }) {
+  const { data: orders = [], isPending, error } = useQuery({
+    queryKey: ['orders', userId, 'open'], // primitives -> stable cache key
+    queryFn: async ({ signal }) => {
+      const res = await fetch(\`/api/orders?userId=\${userId}&status=open\`, { signal });
+      if (!res.ok) throw new Error(\`HTTP \${res.status}\`);
+      return res.json();
+    },
+    staleTime: 60_000, // don't refetch for a minute when the page is revisited
+  });
+
+  if (isPending) return <OrderTableSkeleton />;
+  if (error) return <ErrorMessage error={error} />;
+  return <OrderTable orders={orders} />;
+}
+
+// Only re-renders when the orders array actually changes
+const OrderTable = React.memo(function OrderTable({ orders }) { /* ... */ });
+\`\`\`
+
+Without a library: \`useEffect(..., [userId])\` with an \`AbortController\`, and keep \`loading/data/error\` in one \`useReducer\` so they change together. Also check for a parent re-rendering this page, or a context \`value\` that is a new object every render.
+
+**Step 3 — Fix the 5 s on the server.** Time each step (log or APM trace) to find where the time goes:
+- **Slow query:** run it with \`explain('executionStats')\` (MongoDB) or \`EXPLAIN ANALYZE\` (SQL). A full scan (\`COLLSCAN\` / Seq Scan) → add an index on \`{ userId: 1, status: 1 }\`.
+- **N+1 queries:** a query inside a loop → one \`$in\` query, \`$lookup\` or a JOIN.
+- **Too much data:** add pagination and return only the fields the table shows.
+- **Slow calls to other services** made one after another → run independent ones with \`Promise.all\`, and add timeouts.
+- **Expensive, rarely changing data** → cache it in Redis with a TTL.
+
+**Step 4 — Make the wait feel shorter:** show a skeleton instead of a blank spinner, show cached data instantly while refetching, and prefetch on hover of the link.
+
+**Step 5 — Verify** with the same measurements: one request per visit, renders only when data arrives, and a much lower TTFB.`,
+      followUps: [
+        {
+          q: 'Are multiple re-renders always a problem?',
+          a: 'No. Renders are usually cheap. They matter when they are expensive (big lists, heavy calculations), when they cause extra network requests, or when the UI visibly lags. Measure with the Profiler before adding memo everywhere.',
+        },
+        {
+          q: 'Does React 18 batch the two setState calls in the .then()?',
+          a: 'Yes. Since React 18, updates inside promises, timeouts and native events are batched automatically, so `setOrders` and `setLoading` cause one render. In React 17 they caused two.',
+        },
+        {
+          q: 'How do you find which component re-renders and why?',
+          a: 'React DevTools Profiler with "Record why each component rendered while profiling" turned on. It shows whether props, state, hooks or the parent caused the render.',
+        },
+      ],
+    },
+    {
+      id: 'cart-price-changed-before-checkout',
+      title: 'Scenario: the price changes from ₹200 to ₹300 while the item is in the cart',
+      difficulty: 'medium',
+      type: 'scenario',
+      frequency: 'common',
+      relatedTopic: 'state-management',
+      question: `A user adds a product to their cart when it costs **₹200**. Before they check out, an admin changes the price to **₹300**. The cart in the browser still shows ₹200.
+
+How should the system handle this? What does the frontend show, what does the backend do, and what price is the user finally charged?`,
+      hints: [
+        'Which side should decide the price that is charged: the browser or the server?',
+        'The browser can send what price it **showed** the user, so the server can compare.',
+        'After the order is placed, a later price change must not change it. What should the order store?',
+      ],
+      solution: `**Idea:** the **server is the only source of truth for price**. The cart is a list of product ids and quantities; prices in the browser are only for display. At checkout the server re-reads current prices, and if anything changed it **stops and asks the user to confirm** instead of silently charging more (or less).
+
+**The flow:**
+1. The cart stores \`productId\` + \`qty\` (and the price shown, only for comparison).
+2. On checkout, the browser sends the items **with the prices it showed**. It never sends a total to charge.
+3. The server loads current prices from the database:
+   - Same as shown → create the order.
+   - Different → return **409 Conflict** with the old and new prices. The UI shows *"The price of X changed from ₹200 to ₹300"* and the user confirms again.
+4. The order **copies the unit price at the time of purchase** into its items, so later price changes don't affect past orders.
+5. The payment amount comes from the **saved order total** on the server, never from the request body.
+
+\`\`\`javascript
+// POST /api/checkout   body: { items: [{ productId, qty, shownPrice }] }
+// Prices are stored as integers in paise (₹200 = 20000) to avoid float errors.
+app.post('/api/checkout', requireAuth, async (req, res) => {
+  const { items } = req.body;
+  const products = await Product.find({ _id: { $in: items.map((i) => i.productId) } }).lean();
+  const byId = new Map(products.map((p) => [String(p._id), p]));
+
+  const changed = [];
+  const lines = [];
+  for (const item of items) {
+    const product = byId.get(item.productId);
+    if (!product || !product.active) {
+      return res.status(409).json({ code: 'ITEM_UNAVAILABLE', productId: item.productId });
+    }
+    if (product.price !== item.shownPrice) {
+      changed.push({ productId: item.productId, name: product.name, was: item.shownPrice, now: product.price });
+    }
+    // Snapshot: the price is copied into the order, not referenced
+    lines.push({ productId: product._id, name: product.name, unitPrice: product.price, qty: item.qty });
+  }
+
+  if (changed.length) return res.status(409).json({ code: 'PRICE_CHANGED', changed });
+
+  const total = lines.reduce((sum, l) => sum + l.unitPrice * l.qty, 0);
+  const order = await Order.create({ userId: req.user.id, items: lines, total, status: 'pending_payment' });
+  // Create the payment for order.total here, on the server
+  res.status(201).json({ orderId: order._id, total });
+});
+\`\`\`
+
+\`\`\`jsx
+// In the checkout page
+async function placeOrder() {
+  const res = await fetch('/api/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: cart.map(({ productId, qty, price }) => ({ productId, qty, shownPrice: price })) }),
+  });
+  if (res.status === 409) {
+    const body = await res.json();
+    if (body.code === 'PRICE_CHANGED') {
+      setPriceChanges(body.changed); // show "₹200 → ₹300, continue?"
+      await refreshCart();           // update the prices shown in the cart
+      return;
+    }
+  }
+  if (!res.ok) throw new Error('Checkout failed');
+  const { orderId } = await res.json();
+  navigate(\`/pay/\${orderId}\`);
+}
+\`\`\`
+
+**Also worth saying:**
+- **Show changes early, too:** re-fetch cart prices when the cart page opens, so the surprise rarely reaches checkout.
+- **It is a business decision** whether to honour the old price. Some stores give a **price lock**: a quote with an expiry (e.g. 15 minutes) saved on the server. The pattern is the same: the server decides, using data it stored.
+- **Price drops** are handled the same way: the user simply pays the new, lower price.`,
+      followUps: [
+        {
+          q: 'Why not just trust the price the frontend sends?',
+          a: 'Anyone can edit a request in DevTools or Postman and send ₹1. The server must calculate the amount from its own database. The shown price is only used to detect a change.',
+        },
+        {
+          q: 'What if the price changes after the order is created but before payment completes?',
+          a: 'Nothing changes for that order. It already stores the unit price and the total, and the payment is created for that saved total. The new price applies to new orders only.',
+        },
+        {
+          q: 'Why store money as integers?',
+          a: 'Floats can not represent many decimals exactly (0.1 + 0.2 !== 0.3). Storing the smallest unit (paise) as an integer keeps sums exact. Payment providers like Stripe and Razorpay also take amounts in the smallest unit.',
+        },
+      ],
+    },
+    {
+      id: 'state-leaks-between-pages',
+      title: "Scenario: the previous page's state shows up on the next page",
+      difficulty: 'medium',
+      type: 'scenario',
+      frequency: 'common',
+      relatedTopic: 'react-router-v6',
+      question: `On a product site, you open \`/products/1\`, set the quantity to 3, then click a "Similar products" link to \`/products/2\`. The new page still shows **quantity 3**, and for a moment it even shows **product 1's name and price**.
+
+\`\`\`jsx
+// <Route path="/products/:id" element={<ProductPage />} />
+function ProductPage() {
+  const { id } = useParams();
+  const [product, setProduct] = useState(null);
+  const [qty, setQty] = useState(1);
+
+  useEffect(() => {
+    fetch(\`/api/products/\${id}\`).then((r) => r.json()).then(setProduct);
+  }, []);
+
+  if (!product) return <Spinner />;
+  return <ProductView product={product} qty={qty} onQtyChange={setQty} />;
+}
+\`\`\`
+
+What could cause the old state to appear, and how would you fix it?`,
+      hints: [
+        'Both URLs match the **same route**. Does React unmount `ProductPage` when only `:id` changes?',
+        '`useState(1)` only uses its initial value on the **first mount**. Look at the effect dependencies too.',
+        'If two requests are in flight, which response arrives last?',
+      ],
+      solution: `**Idea:** React keeps a component's state as long as the **same component stays at the same place in the tree**. Moving from \`/products/1\` to \`/products/2\` renders the same \`<ProductPage>\` in the same spot, so React **re-uses it**: state is kept and only \`id\` changes.
+
+**Common causes:**
+1. **Same component, new params** (this case): \`qty\` keeps 3, and the effect with \`[]\` never fetches product 2.
+2. **Missing effect dependency:** the effect uses \`id\` but does not list it.
+3. **Race condition:** a slow response for the old page arrives after the new one and overwrites it.
+4. **Global state not cleared:** a Redux/Zustand/context value like \`selectedProduct\`, or a variable at module level, keeps the last page's data until the new data arrives.
+5. **Shared layouts:** state in a layout (a search box, filters) is kept on purpose when you navigate. Next.js layouts do not remount either (use \`template.tsx\` if they should).
+
+**Fix 1 — reset everything with a \`key\`.** A new key tells React it is a different component, so it mounts fresh with fresh state:
+
+\`\`\`jsx
+function ProductRoute() {
+  const { id } = useParams();
+  return <ProductPage key={id} id={id} />;
+}
+\`\`\`
+
+**Fix 2 — correct dependencies and ignore stale responses:**
+
+\`\`\`jsx
+function ProductPage({ id }) {
+  const [product, setProduct] = useState(null);
+  const [qty, setQty] = useState(1);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(\`/api/products/\${id}\`, { signal: controller.signal })
+      .then((r) => r.json())
+      .then(setProduct)
+      .catch((err) => {
+        if (err.name !== 'AbortError') console.error(err);
+      });
+    return () => controller.abort(); // the old request can't overwrite the new page
+  }, [id]);
+
+  if (!product) return <Spinner />;
+  return <ProductView product={product} qty={qty} onQtyChange={setQty} />;
+}
+\`\`\`
+
+With TanStack Query, put the id in the key (\`queryKey: ['product', id]\`) and each product gets its own cached data, so product 1 is never shown for product 2.
+
+**Fix 3 — for global state:** store data **by id** (\`productsById[id]\`) instead of one "current" value, or clear it when the route changes. Don't keep page data in variables at module level.
+
+**How to find it:** React DevTools → Components. Navigate and watch whether the component **remounts** (state goes back to initial values) or keeps its state. Check the Network tab for requests finishing out of order.`,
+      followUps: [
+        {
+          q: 'Why not reset the state in a useEffect when id changes?',
+          a: 'It works, but the page first renders once with the old state and then again after the reset, so the old value flashes. A `key` resets it before the first render, and you can not forget a piece of state.',
+        },
+        {
+          q: 'Is keeping state between routes ever wanted?',
+          a: 'Yes: a scroll position, a search box in a shared layout, or a list you come back to. Keep that state in the layout or a store on purpose, and reset per-page state with a key.',
+        },
+      ],
+    },
+    {
       id: 'use-interval-hook',
       title: 'Write a useInterval hook (pause, change speed, no stale state)',
       difficulty: 'hard',

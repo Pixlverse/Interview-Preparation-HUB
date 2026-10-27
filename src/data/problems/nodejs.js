@@ -1532,6 +1532,173 @@ This is a **workaround**, not a fix. It re-enables weak crypto, and the flag is 
       ],
     },
     {
+      id: 'last-seat-double-booking',
+      title: 'Scenario: two users book the last seat at the same time',
+      difficulty: 'medium',
+      type: 'scenario',
+      frequency: 'very common',
+      relatedTopic: 'scaling-production',
+      question: `A movie booking API has one seat left. Two users click "Book" at exactly the same moment, and **both** get a confirmation. The code looks like this:
+
+\`\`\`javascript
+app.post('/api/shows/:showId/seats/:seatNo/book', requireAuth, async (req, res) => {
+  const { showId, seatNo } = req.params;
+  const seat = await Seat.findOne({ showId, seatNo });
+  if (seat.status !== 'available') {
+    return res.status(409).json({ code: 'SEAT_TAKEN' });
+  }
+  seat.status = 'booked';
+  seat.bookedBy = req.user.id;
+  await seat.save();
+  res.json({ ok: true });
+});
+\`\`\`
+
+Why does this happen, and how do you make sure only one user gets the seat? The API runs on several servers.`,
+      hints: [
+        'Between the `findOne` and the `save` there is an `await`. What can the other request do during that time?',
+        'Can the database do the check **and** the write in one atomic step?',
+        'A lock in a JavaScript variable only works inside one process. You have several servers.',
+      ],
+      solution: `**Idea:** this is a **check-then-act race condition**. Both requests read the seat as \`available\` before either one writes, so both pass the check. Node being single-threaded doesn't help: each \`await\` lets the other request run, and there are several servers anyway. The fix is to let the **database** do the check and the update **as one atomic operation**, so only one request can win.
+
+**Fix 1 — atomic conditional update (MongoDB).** Put the condition in the filter. Only one update can match \`status: 'available'\`; the second finds nothing:
+
+\`\`\`javascript
+app.post('/api/shows/:showId/seats/:seatNo/hold', requireAuth, async (req, res) => {
+  const { showId, seatNo } = req.params;
+  const now = new Date();
+
+  const seat = await Seat.findOneAndUpdate(
+    {
+      showId,
+      seatNo,
+      // free, or held by someone whose hold has expired
+      $or: [{ status: 'available' }, { status: 'held', holdExpiresAt: { $lt: now } }],
+    },
+    { $set: { status: 'held', heldBy: req.user.id, holdExpiresAt: new Date(now.getTime() + 10 * 60_000) } },
+    { new: true }
+  );
+
+  if (!seat) return res.status(409).json({ code: 'SEAT_TAKEN' });
+  res.json({ seatId: seat._id, holdExpiresAt: seat.holdExpiresAt });
+});
+\`\`\`
+
+A single-document update is atomic in MongoDB, so even with many servers only one request gets the seat. The loser gets **409** and the UI says "Sorry, this seat was just taken".
+
+**Same idea in SQL:**
+
+\`\`\`sql
+UPDATE seats
+SET status = 'held', held_by = $3, hold_expires_at = now() + interval '10 minutes'
+WHERE show_id = $1 AND seat_no = $2
+  AND (status = 'available' OR (status = 'held' AND hold_expires_at < now()))
+RETURNING id;
+-- 0 rows returned -> someone else got the seat
+\`\`\`
+
+Or, inside a transaction, \`SELECT ... FOR UPDATE\` locks the row so the second request waits, then sees it is taken.
+
+**Fix 2 — a unique index as a safety net.** If bookings are a separate collection, a unique index on \`{ showId, seatNo }\` makes the database reject the second insert (duplicate key error 11000), even if a bug slips into the code.
+
+**Hold, then pay.** Real booking systems (like BookMyShow) **hold** the seat for a few minutes while the user pays, then mark it \`booked\` when the payment succeeds. Expired holds become free again (the \`$or\` above, or a cleanup job).
+
+**Other options to mention:**
+- **Redis lock** (\`SET seat:123 userId NX PX 600000\`) for a fast, short hold across servers. The database update is still the final check.
+- **Idempotency key** so a double click or retry from the same user doesn't create two bookings.
+- **Not** an in-memory flag or mutex: it only protects one Node process.`,
+      followUps: [
+        {
+          q: 'Optimistic or pessimistic locking — which here?',
+          a: 'Optimistic (a conditional update or a version field) is a good default: no waiting, and the loser just gets a conflict. Pessimistic (SELECT ... FOR UPDATE) makes others wait and suits short transactions that touch several rows, like moving money.',
+        },
+        {
+          q: 'How do you book several seats together, all or nothing?',
+          a: 'Use a transaction: hold every seat with the conditional update and abort if any one returns nothing. In SQL, lock rows in a fixed order (e.g. by seat number) to avoid deadlocks. In MongoDB use a multi-document transaction, or put all seats of a show in one document.',
+        },
+        {
+          q: 'How would you test that it works?',
+          a: 'Fire many requests for the same seat at once (Promise.all in a test, or k6/autocannon) and assert that exactly one succeeds and the rest get 409.',
+        },
+      ],
+    },
+    {
+      id: 'works-in-postman-fails-in-react',
+      title: 'Scenario: the API works in Postman but fails from the React app',
+      difficulty: 'medium',
+      type: 'scenario',
+      frequency: 'very common',
+      relatedTopic: 'node-security',
+      question: `Your Express API returns the right data when you call it from **Postman**. When the React app calls the same endpoint, it fails: sometimes there is a red error in the console, sometimes the server gets an empty body, sometimes the user is "not logged in".
+
+How do you debug this step by step? What are the usual causes?`,
+      hints: [
+        'Postman is not a browser. Which rules does the browser enforce that Postman ignores?',
+        'Open DevTools → Network and Console and read the actual error before guessing.',
+        'Compare the two requests: URL, method, headers, body, cookies.',
+      ],
+      solution: `**Idea:** Postman sends exactly what you typed and ignores browser security rules. The browser adds rules (CORS, cookie policies, mixed content) and your frontend code builds the request differently. So **compare the two requests** and read the browser's error.
+
+**Step 1 — Read the real error.** DevTools → Console and Network. Click the failing request: status, request headers, payload, response. Is there an **OPTIONS** request before it that failed?
+
+**Step 2 — Compare.** Right-click the request → **Copy as cURL** and run it in a terminal (or import into Postman).
+- It **fails** there too → the request itself is wrong (URL, headers, body, token).
+- It **works** there → it is a **browser rule** (CORS or cookies).
+
+**Usual causes and fixes:**
+
+1. **CORS** — console says "blocked by CORS policy". Postman, curl and servers ignore CORS; browsers enforce it. A request with \`Content-Type: application/json\` or an \`Authorization\` header first sends an **OPTIONS preflight**, which the server must answer.
+
+\`\`\`javascript
+import cors from 'cors';
+
+const allowedOrigins = ['http://localhost:5173', 'https://app.example.com'];
+
+app.use(cors({
+  origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
+  credentials: true, // allow cookies; the origin can not be '*' when this is true
+}));
+app.use(express.json());
+\`\`\`
+
+   In development you can also avoid CORS with the dev server's proxy (Vite \`server.proxy\`), so the app and API share one origin.
+
+2. **Missing body or headers** — the server gets \`req.body\` as \`{}\`. Postman sets \`Content-Type\` for you; with \`fetch\` you must set it **and** call \`JSON.stringify\`.
+
+\`\`\`javascript
+const res = await fetch(\`\${import.meta.env.VITE_API_URL}/api/orders\`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', Authorization: \`Bearer \${token}\` },
+  credentials: 'include', // send cookies to another origin
+  body: JSON.stringify(order),
+});
+if (!res.ok) throw new Error(\`HTTP \${res.status}: \${await res.text()}\`); // fetch does not throw on 4xx/5xx
+\`\`\`
+
+3. **Wrong URL** — the env variable is \`undefined\` because it lacks the required prefix (\`VITE_\`, \`NEXT_PUBLIC_\`, \`REACT_APP_\`) or the dev server wasn't restarted. The request then hits the frontend server, which returns \`index.html\`, and \`res.json()\` fails with *"Unexpected token '<'"*.
+
+4. **Auth not sent** — Postman has the token or cookie saved; the app doesn't attach it. Cookies to another origin need \`credentials: 'include'\` on the client, \`credentials: true\` in CORS, and \`SameSite=None; Secure\` on the cookie.
+
+5. **Mixed content** — an \`https\` site calling an \`http\` API is blocked by the browser.
+
+6. **\`localhost\` in production** — the deployed app calls \`http://localhost:4000\`, which means the **user's own machine**.
+
+7. **Browser extensions** — ad blockers can block URLs containing words like \`/ads\` or \`/track\`. Try an incognito window.
+
+**Step 3 — Check the server logs** too: did the request even arrive? Which status did the server send? Log the method, URL, origin and status for every request.`,
+      followUps: [
+        {
+          q: 'Does CORS protect my API from attackers?',
+          a: 'No. CORS only stops other websites, in a user\'s browser, from reading your responses. Anyone can call the API with curl or Postman. You still need authentication, authorization and rate limiting.',
+        },
+        {
+          q: 'What is a preflight request?',
+          a: 'An OPTIONS request the browser sends before a "non-simple" request (custom headers like Authorization, JSON content type, PUT/DELETE). The server must reply with the matching Access-Control-Allow-* headers, or the real request is never sent.',
+        },
+      ],
+    },
+    {
       id: 'memory-leak-cache-listeners',
       title: 'Debug: memory grows until the container is OOM-killed',
       difficulty: 'hard',
@@ -2160,6 +2327,78 @@ Tested with a 25,003-row file and a mock collection: 24,952 rows written in 25 \
         {
           q: 'How would you let the admin "undo" an import?',
           a: 'Tag every write with `importJobId` (as above) and keep the previous values (e.g. write to a staging collection first, then swap or merge). A full undo needs the old data; a tag alone only tells you **which** documents changed.',
+        },
+      ],
+    },
+    {
+      id: 'thousand-concurrent-requests-slow',
+      title: 'Scenario: 1,000 concurrent requests and response time suddenly climbs',
+      difficulty: 'hard',
+      type: 'scenario',
+      frequency: 'very common',
+      relatedTopic: 'scaling-production',
+      question: `Your Node.js API (Express + MongoDB, one server) answers in about 100 ms. When traffic reaches about **1,000 concurrent requests**, response times suddenly climb to several seconds and some requests time out.
+
+How would you investigate, and how would you resolve it?`,
+      hints: [
+        'First find **where** the time goes: is Node busy running code, or is it waiting for something (database, another service)?',
+        'With 1,000 requests and, say, 10 database connections, what happens to request number 11?',
+        'One Node process runs JavaScript on one core. How many cores does the server have?',
+      ],
+      solution: `**Idea:** latency that jumps at a certain load usually means **requests are waiting in a queue** for something limited: the CPU (one thread), the DB connection pool, the libuv thread pool, or a slow service. Measure to find which one, fix that bottleneck, then add capacity.
+
+**Step 1 — Get the facts.**
+- Does it affect **all routes** or only some? Did it start after a deploy, a traffic spike, or a cron job?
+- Look at the metrics: CPU **per core**, memory and GC, **event loop lag**, DB pool waits, DB query times, latency of outside calls, error rate.
+- Reproduce on staging with a load tool: \`npx autocannon -c 1000 -d 30 http://localhost:3000/api/products\`.
+
+**Step 2 — Is Node busy or waiting?**
+
+\`\`\`javascript
+const { monitorEventLoopDelay } = require('node:perf_hooks');
+const lag = monitorEventLoopDelay();
+lag.enable();
+setInterval(() => {
+  console.log('event loop p99 lag (ms):', Math.round(lag.percentile(99) / 1e6));
+  lag.reset();
+}, 5000).unref();
+\`\`\`
+
+- **High lag, one core at 100%** → Node is **busy**. Synchronous work blocks every request: big \`JSON.stringify\`, \`bcrypt.hashSync\`, sorting large arrays, heavy regex. Profile with \`node --cpu-prof\` or \`clinic flame\`.
+- **Low lag** → Node is **waiting**. Check the DB pool, the thread pool and outside services.
+
+**Step 3 — Understand the queue (Little's law).** If a request holds a DB connection for 50 ms and the pool has 10 connections, the most you can serve is about 10 / 0.05 = **200 requests per second**. The other requests wait for a free connection, so time grows with the queue, even though the database says "every query is fast".
+
+**Step 4 — Fix the bottleneck:**
+
+| Cause | Fix |
+|---|---|
+| CPU-heavy code on the main thread | Make it async or move it to **worker threads** or a **queue** (BullMQ). |
+| Only one core used | Run one process per core: \`pm2 start server.js -i max\` (cluster mode) or several containers. |
+| DB pool exhausted / slow queries | Add **indexes**, remove N+1 queries, paginate, tune \`maxPoolSize\`. |
+| Same data read again and again | **Cache** hot reads in Redis with a TTL. |
+| Slow outside service | **Timeouts** (\`fetch(url, { signal: AbortSignal.timeout(2000) })\`), retries with backoff, a circuit breaker. |
+| libuv thread pool full (fs, crypto, dns, zlib) | Raise \`UV_THREADPOOL_SIZE\` or reduce that work. |
+| Memory pressure and long GC pauses | Find the leak with a heap snapshot; stream big responses instead of building them in memory. |
+
+**Step 5 — Protect and scale:**
+- **Scale out:** several instances behind a load balancer, with autoscaling on CPU or latency.
+- **Rate limiting** per user or IP, and **load shedding**: reply 503 quickly when overloaded instead of letting every request get slow.
+- **Alerts** on p99 latency and event loop lag so you see it before users complain.
+
+**Step 6 — Verify:** run the same load test again and compare p95/p99 latency and errors before and after.`,
+      followUps: [
+        {
+          q: 'Can Node handle 1,000 concurrent requests at all?',
+          a: 'Yes, easily, if each request mostly waits on I/O. One process can hold thousands of open connections because waiting does not use the thread. It slows down when requests use CPU or when a shared resource (DB pool, thread pool) is too small.',
+        },
+        {
+          q: 'Should I just make the database pool much bigger?',
+          a: 'Not blindly. Each connection uses memory on the database, and many instances × a big pool can exceed its connection limit. Fix slow queries first, then size the pool based on what the database can handle.',
+        },
+        {
+          q: 'Cluster module or worker threads?',
+          a: 'Cluster (or PM2 / several containers) runs more copies of the whole server to use all cores. Worker threads run specific CPU-heavy tasks off the main thread inside one process. They solve different problems and are often used together.',
         },
       ],
     },

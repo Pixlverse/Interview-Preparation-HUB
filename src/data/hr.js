@@ -64,7 +64,7 @@ PAST     Haspaces, Thiruvananthapuram, June 2023 - September 2026
          SKILLKEEPR: multi-tenant HR SaaS -> RBAC, Stripe subscriptions + marketplace,
                      MongoDB Boolean search engine, led Node 16 -> 18 migration,
                      fixed critical production issues within 24 hours
-         OCTAGNT:    agentic AI shortlisting -> OpenAI JD generation (~70% less manual effort),
+         OCTAGNT:    agentic AI shortlisting -> Claude JD generation (~70% less manual effort),
                      AI voice interview agent microservice on GCP (Twilio, Google STT/TTS, Grok Voice),
                      Zoho CRM automation, Docker + AWS S3/Lambda + CI/CD
 
@@ -76,7 +76,7 @@ FUTURE   Own full-stack features end to end at larger scale, especially SaaS + A
 
 Most recently I worked at Haspaces in Thiruvananthapuram, from June 2023 to September 2026, on two products. The first was SkillKeepr, a multi-tenant HR SaaS. There I built role-based access control, Stripe subscriptions and a marketplace, and a Boolean search engine on MongoDB so recruiters could run queries like 'React AND Node NOT PHP'. I also led our Node 16 to 18 migration and handled critical production issues, usually fixing them within 24 hours.
 
-The second product was OCTAGNT, an agentic AI platform for shortlisting candidates. I built job description generation with OpenAI, which cut manual effort by around 70%, and a separate AI voice interview agent on GCP using Twilio, Google speech-to-text and text-to-speech, and xAI's Grok Voice. I also automated Zoho CRM onboarding and worked on Docker and AWS deployments.
+The second product was OCTAGNT, an agentic AI platform for shortlisting candidates. I built job description generation with Claude, which cut manual effort by around 70%, and a separate AI voice interview agent on GCP using Twilio, Google speech-to-text and text-to-speech, and xAI's Grok Voice. I also automated Zoho CRM onboarding and worked on Docker and AWS deployments.
 
 My role there ended in September, and I'm now looking for a team where I can own full-stack features end to end at a bigger scale — especially in SaaS and AI. That's why this role caught my attention."
 
@@ -99,7 +99,7 @@ My role there ended in September, and I'm now looking for a team where I can own
           a: 'Drop the details and keep one highlight per product: "Full Stack MERN engineer, 3+ years. At Haspaces I built Stripe billing and search for an HR SaaS, and an AI voice interview agent for an AI hiring platform. Now I want to own features at bigger scale."',
         },
       ],
-      spoken: `"I'm Adarsh, a Full Stack Engineer with over three years in React, Node, TypeScript and MongoDB. From June 2023 to September 2026 I was at Haspaces, working on two products. On SkillKeepr, a multi-tenant HR SaaS, I built role-based access, Stripe subscriptions and a Boolean search engine, and I led our Node 16 to 18 migration. On OCTAGNT, an AI shortlisting platform, I built OpenAI job description generation that cut manual effort by about 70%, and an AI voice interview agent on GCP. Now I want to own full-stack features at a larger scale, which is why this role interests me."`,
+      spoken: `"I'm Adarsh, a Full Stack Engineer with over three years in React, Node, TypeScript and MongoDB. From June 2023 to September 2026 I was at Haspaces, working on two products. On SkillKeepr, a multi-tenant HR SaaS, I built role-based access, Stripe subscriptions and a Boolean search engine, and I led our Node 16 to 18 migration. On OCTAGNT, an AI shortlisting platform, I built Claude-based job description generation that cut manual effort by about 70%, and an AI voice interview agent on GCP. Now I want to own full-stack features at a larger scale, which is why this role interests me."`,
       mistakes: [
         'Starting with personal life ("I was born in...", "my hobbies are..."). Start with your professional identity.',
         'Reading the resume line by line, or listing every technology you have ever touched. Pick 3-4 highlights with results.',
@@ -370,7 +370,7 @@ The formula: **their need → your proof**. Read the job description, pick their
 Do not say "I'm hardworking and passionate" — every candidate says that. Be specific and connect to the role:
 - They need full-stack MERN? → SkillKeepr and OCTAGNT, both end to end.
 - They need payments? → Stripe subscriptions and marketplace.
-- They need AI/LLM work? → OpenAI JD generation (~70% less manual effort) and the voice interview agent.
+- They need AI/LLM work? → Claude JD generation (~70% less manual effort) and the voice interview agent.
 - They need reliability? → 24-hour production fixes, Node migration.
 - They need someone fast? → available to join immediately.
 
@@ -393,7 +393,7 @@ Finish with a short value line: "So I can contribute from the first weeks, not a
 
 "From what I understand, you need someone who can own full-stack features in React and Node, work with payments, and help build AI features. That's very close to what I did for the last three years.
 
-On SkillKeepr, a multi-tenant HR SaaS, I built RBAC, Stripe subscriptions and a marketplace, and a Boolean search engine on MongoDB. On OCTAGNT I built OpenAI-based job description generation that reduced manual effort by about 70%, and an AI voice interview agent on GCP. I've also handled production — I led a Node 16 to 18 migration and fixed critical issues within 24 hours.
+On SkillKeepr, a multi-tenant HR SaaS, I built RBAC, Stripe subscriptions and a marketplace, and a Boolean search engine on MongoDB. On OCTAGNT I built Claude-based job description generation that reduced manual effort by about 70%, and an AI voice interview agent on GCP. I've also handled production — I led a Node 16 to 18 migration and fixed critical issues within 24 hours.
 
 And since my last role ended in September, I can join immediately. So I can start contributing in the first few weeks."
 
@@ -412,7 +412,7 @@ Adapt: change the three needs to match each company's job description.`,
           a: '"First month: learn the codebase and ship small fixes. Second: own a feature end to end. Third: improve something — docs, tests, or a reliability issue I notice." Adapt to the role.',
         },
       ],
-      spoken: `"From the job description, you need someone who can own full-stack features in React and Node, handle payments, and build AI features. That's what I've done for three years. On SkillKeepr I built RBAC, Stripe subscriptions and a MongoDB Boolean search engine. On OCTAGNT I built OpenAI job description generation that cut manual effort by about 70%, plus an AI voice interview agent. I've also led a Node migration and handled production issues within 24 hours. And I can join immediately, so I can start adding value quickly."`,
+      spoken: `"From the job description, you need someone who can own full-stack features in React and Node, handle payments, and build AI features. That's what I've done for three years. On SkillKeepr I built RBAC, Stripe subscriptions and a MongoDB Boolean search engine. On OCTAGNT I built Claude-based job description generation that cut manual effort by about 70%, plus an AI voice interview agent. I've also led a Node migration and handled production issues within 24 hours. And I can join immediately, so I can start adding value quickly."`,
       mistakes: [
         'Generic claims: "I\'m hardworking, passionate and a fast learner." Everyone says it; nobody remembers it.',
         'Listing every skill you have instead of the 2-3 that match this role.',
@@ -470,7 +470,7 @@ RESEARCH CHECKLIST (15-20 min)
 
 "I spent some time on your product, and I liked how <specific feature> handles <problem> for teams. I also read that you're adding AI features to <area>. That's exactly the kind of work I enjoy.
 
-At Haspaces I worked on both sides of that. SkillKeepr was a multi-tenant SaaS where I built RBAC and Stripe subscriptions, so I understand SaaS foundations. And on OCTAGNT I built LLM features in production — OpenAI job description generation and an AI voice interview agent. So I feel I can contribute to both your core product and your AI roadmap fairly quickly. And honestly, the scale you're at is the next step I want in my career."`,
+At Haspaces I worked on both sides of that. SkillKeepr was a multi-tenant SaaS where I built RBAC and Stripe subscriptions, so I understand SaaS foundations. And on OCTAGNT I built LLM features in production — Claude-based job description generation and an AI voice interview agent. So I feel I can contribute to both your core product and your AI roadmap fairly quickly. And honestly, the scale you're at is the next step I want in my career."`,
       questions: [
         {
           q: 'What do you know about our company?',
@@ -485,7 +485,7 @@ At Haspaces I worked on both sides of that. SkillKeepr was a multi-tenant SaaS w
           a: 'Be honest at a high level: "Mostly product companies in SaaS and AI." No need to name them. Then say why this one is high on your list.',
         },
       ],
-      spoken: `"I looked at your product and really liked how <specific feature> solves <problem> for teams. What excites me about this role is that it's full-stack ownership on a SaaS product that's adding AI — and that's exactly my background. At Haspaces I built multi-tenant SaaS features like RBAC and Stripe subscriptions on SkillKeepr, and production AI features on OCTAGNT, like OpenAI job description generation and a voice interview agent. So I can contribute quickly, and your scale is the next step I want."`,
+      spoken: `"I looked at your product and really liked how <specific feature> solves <problem> for teams. What excites me about this role is that it's full-stack ownership on a SaaS product that's adding AI — and that's exactly my background. At Haspaces I built multi-tenant SaaS features like RBAC and Stripe subscriptions on SkillKeepr, and production AI features on OCTAGNT, like Claude-based job description generation and a voice interview agent. So I can contribute quickly, and your scale is the next step I want."`,
       mistakes: [
         'Generic praise: "You are a great company with a great culture." It shows zero research.',
         'Leading with salary, location or brand name as the main reason.',
@@ -955,7 +955,7 @@ SCOPE TABLE
 
 "On OCTAGNT we had a client demo coming up and needed AI job description generation working in time. I was responsible for the feature end to end.
 
-I first listed everything that was asked for and split it into must-haves and nice-to-haves. The must-haves were: generate a good JD from a few inputs with OpenAI, let the recruiter edit it, and save it. The nice-to-haves were things like multiple tone options and templates. I told my manager early: 'I can have the core flow ready for the demo, and the extras the week after.' He agreed.
+I first listed everything that was asked for and split it into must-haves and nice-to-haves. The must-haves were: generate a good JD from a few inputs with Claude, let the recruiter edit it, and save it. The nice-to-haves were things like multiple tone options and templates. I told my manager early: 'I can have the core flow ready for the demo, and the extras the week after.' He agreed.
 
 I focused testing on the parts that could embarrass us in the demo — bad or empty AI responses, timeouts — and added a fallback message. We delivered the core flow on time, the demo went well, and the extras came in the next iteration. Later, that feature cut manual JD writing effort by around 70%."`,
       questions: [
@@ -1701,7 +1701,7 @@ CLARIFYING QUESTIONS
 
 So I asked a few focused questions: who would use it, what inputs they'd have (role, skills, experience level), and could they share a few JDs they considered good. I wrote down my assumptions — for example, that the recruiter must always be able to edit before publishing — and shared them with my manager.
 
-Then I built a small version: a simple form, an OpenAI call with a structured prompt, and an editable result. We showed it early, got feedback about tone and missing sections, and adjusted the prompt and form. Because we iterated early, we didn't build the wrong thing, and the final feature cut manual JD writing effort by around 70%.
+Then I built a small version: a simple form, a Claude call with a structured prompt, and an editable result. We showed it early, got feedback about tone and missing sections, and adjusted the prompt and form. Because we iterated early, we didn't build the wrong thing, and the final feature cut manual JD writing effort by around 70%.
 
 Adapt: add the real feedback you got and how you measured the effort reduction."`,
       questions: [
@@ -1718,7 +1718,7 @@ Adapt: add the real feedback you got and how you measured the effort reduction."
           a: 'Use real examples of good output, list must-haves (sections, tone, safety), test with real inputs, and keep a human review step.',
         },
       ],
-      spoken: `"When requirements are unclear, I don't wait and I don't guess silently. I ask a few focused questions — who is the user, what does done look like, do we have examples — then write down my assumptions and share them. On OCTAGNT, the request was just 'AI should write job descriptions'. I asked for sample JDs recruiters liked, built a small editable version with OpenAI, demoed it early, and adjusted from feedback. That's how we avoided rework, and it ended up cutting manual effort by around 70%."`,
+      spoken: `"When requirements are unclear, I don't wait and I don't guess silently. I ask a few focused questions — who is the user, what does done look like, do we have examples — then write down my assumptions and share them. On OCTAGNT, the request was just 'AI should write job descriptions'. I asked for sample JDs recruiters liked, built a small editable version with Claude, demoed it early, and adjusted from feedback. That's how we avoided rework, and it ended up cutting manual effort by around 70%."`,
       mistakes: [
         'Waiting for perfect requirements before starting anything.',
         'Building for weeks on assumptions nobody confirmed.',
