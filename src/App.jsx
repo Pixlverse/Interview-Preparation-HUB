@@ -8,7 +8,7 @@ import StackPage from './pages/StackPage.jsx';
 import TopicPage from './pages/TopicPage.jsx';
 import BookmarksPage from './pages/BookmarksPage.jsx';
 import QuickRevisePage from './pages/QuickRevisePage.jsx';
-import FocusPage from './pages/FocusPage.jsx';
+import ReviseMernPage from './pages/ReviseMernPage.jsx';
 import RapidFirePage from './pages/RapidFirePage.jsx';
 import SearchPage from './pages/SearchPage.jsx';
 import ProblemsPage from './pages/ProblemsPage.jsx';
@@ -92,7 +92,7 @@ export default function App() {
               <Route path="/stack/:stackId/:topicId" element={<TopicPage />} />
               <Route path="/problems" element={<ProblemsPage />} />
               <Route path="/bookmarks" element={<BookmarksPage />} />
-              <Route path="/focus" element={<FocusPage />} />
+              <Route path="/revise-mern" element={<ReviseMernPage />} />
               <Route path="/revise" element={<QuickRevisePage />} />
               <Route path="/rapid-fire" element={<RapidFirePage />} />
               <Route path="/search" element={<SearchPage />} />

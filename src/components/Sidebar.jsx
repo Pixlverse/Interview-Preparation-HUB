@@ -4,7 +4,7 @@ import { stacks } from '../data/index.js';
 import { useStudy } from '../context/StudyContext.jsx';
 import ProgressBar from './ProgressBar.jsx';
 import { LEVEL_DOT } from './Badges.jsx';
-import { FOCUS_KEYS } from '../lib/focus.js';
+import { REVISE_COUNT } from '../data/revise/index.js';
 
 const navCls = ({ isActive }) =>
   `flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium ${
@@ -40,10 +40,10 @@ export default function Sidebar({ onNavigate }) {
         <NavLink to="/" end className={navCls} onClick={onNavigate}>
           🏠 Dashboard
         </NavLink>
-        <NavLink to="/focus" className={navCls} onClick={onNavigate}>
-          🔥 Interview Focus
-          <span className="ml-auto rounded-full bg-orange-100 px-1.5 text-xs text-orange-700 dark:bg-orange-900/50 dark:text-orange-300">
-            {FOCUS_KEYS.size}
+        <NavLink to="/revise-mern" className={navCls} onClick={onNavigate}>
+          📝 Revise MERN
+          <span className="ml-auto rounded-full bg-indigo-100 px-1.5 text-xs text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+            {REVISE_COUNT}
           </span>
         </NavLink>
         <NavLink to="/revise" className={navCls} onClick={onNavigate}>
@@ -145,11 +145,6 @@ export default function Sidebar({ onNavigate }) {
                               title={t.level}
                             />
                             <span className="truncate">{t.title}</span>
-                            {FOCUS_KEYS.has(t.key) && (
-                              <span className="shrink-0 text-[11px]" title="Interview focus">
-                                🔥
-                              </span>
-                            )}
                             {learned[t.key] && <span className="ml-auto text-emerald-500">✓</span>}
                           </Link>
                         </li>

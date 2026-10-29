@@ -89,11 +89,11 @@ The bad reducer changes the old object in place and returns the same reference. 
     },
     {
       id: 'store-actions-reducers',
-      title: 'Store, Actions, Reducers and Dispatch',
+      title: 'Store, Actions, Reducers, Dispatch and Selectors',
       level: 'basic',
       priority: 'must',
       frequency: 'very common',
-      summary: 'The store holds state, actions describe events, reducers compute new state, and dispatch sends an action to the store.',
+      summary: 'The store holds the state tree, actions describe events, reducers compute new state, dispatch sends an action to the store, and selectors read pieces of it.',
       what: `The core Redux pieces:
 
 - **Action** — a plain object with a \`type\` string and usually a \`payload\` (the data). Example: \`{ type: 'counter/incremented', payload: 5 }\`.
@@ -101,6 +101,7 @@ The bad reducer changes the old object in place and returns the same reference. 
 - **Reducer** — a function \`(state, action) => newState\`.
 - **Store** — the object that holds the state. It has \`getState()\`, \`dispatch(action)\` and \`subscribe(listener)\`.
 - **Dispatch** — the only way to send an action to the store.
+- **Selector** — a function that reads one piece of data from the state, e.g. \`const selectCount = (state) => state.counter.value\`. Components read through selectors instead of knowing the whole state shape (more in the "Selectors, Reselect and createSelector" topic).
 
 #### Deeper version
 When you call \`dispatch(action)\`, the action first passes through all **middleware**, then reaches the **root reducer**. The root reducer calls each slice reducer with its part of the state (that is what \`combineReducers\` does). The store saves the new state and calls every subscriber. In React, \`react-redux\` is the subscriber: each \`useSelector\` re-runs its selector and re-renders the component only if the selected value changed (by \`===\` by default).
@@ -131,9 +132,13 @@ function user(state = { name: null }, action) {
 // Root reducer + store
 const store = createStore(combineReducers({ counter, user }));
 
+// Selector: read one piece of the state
+const selectCount = (state) => state.counter.value;
+
 const unsubscribe = store.subscribe(() => console.log('state:', store.getState()));
 store.dispatch(increment(2));
 store.dispatch(login('Asha'));
+console.log('count:', selectCount(store.getState()));
 unsubscribe();`,
         },
         {
@@ -160,6 +165,7 @@ export default function App() {
 
 - \`state: { counter: { value: 2 }, user: { name: null } }\`
 - \`state: { counter: { value: 2 }, user: { name: 'Asha' } }\`
+- \`count: 2\` (from the selector)
 
 Each \`dispatch\` runs both slice reducers. Only the reducer that knows the action type returns a new value; the other returns its old state unchanged.
 
