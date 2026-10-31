@@ -1,6 +1,8 @@
 // Revise MERN: the top 25 interview questions per topic, with short spoken-style answers,
 // for a last read just before an interview. One file per group; the order here is the page order.
-import htmlCss from './html-css.js';
+import html from './html.js';
+import css from './css.js';
+import tailwind from './tailwind.js';
 import javascript from './javascript.js';
 import react from './react.js';
 import redux from './redux.js';
@@ -16,7 +18,9 @@ import llm from './llm.js';
 import claude from './claude.js';
 
 export const REVISE_GROUPS = [
-  htmlCss,
+  html,
+  css,
+  tailwind,
   javascript,
   react,
   redux,

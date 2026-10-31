@@ -16,8 +16,8 @@ export default function ReviseMernPage() {
     <div>
       <h1 className="text-3xl font-extrabold tracking-tight">📝 Revise MERN</h1>
       <p className="mt-2 text-slate-600 dark:text-slate-400">
-        The {REVISE_COUNT} questions most likely to come up, {REVISE_GROUPS[0]?.items.length} per topic, each with a short
-        answer you can say out loud. Read it top to bottom just before the interview.
+        The {REVISE_COUNT} questions most likely to come up across {REVISE_GROUPS.length} topics, each with a short answer
+        you can say out loud. Read it top to bottom just before the interview.
       </p>
 
       <div className="mt-5 flex items-center gap-3">

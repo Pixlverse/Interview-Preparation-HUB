@@ -1,16 +1,10 @@
-// Revise MERN: HTML & CSS. 25 likely interview questions with short spoken-style answers.
+// Revise MERN: CSS & SCSS. 15 likely interview questions with short spoken-style answers.
 export default {
-  id: 'html-css',
+  id: 'css',
   icon: '🎨',
-  title: 'HTML & CSS',
-  note: 'Semantic HTML, accessibility, the box model, layout with Flexbox and Grid, specificity, responsive design and CSS performance.',
+  title: 'CSS & SCSS',
+  note: 'The box model, specificity, Flexbox and Grid, positioning, responsive units, stacking, variables, SCSS and naming.',
   items: [
-    {
-      q: 'What is semantic HTML and why does it matter?',
-      a: `**Semantic HTML** means using elements that describe their meaning, like \`<header>\`, \`<nav>\`, \`<main>\`, \`<article>\`, \`<section>\`, \`<button>\` and \`<footer>\`, instead of \`<div>\` everywhere.
-
-It matters for three reasons: **accessibility** (screen readers understand the page structure and can jump between landmarks), **SEO** (search engines understand the content better), and **maintainability** (the code is easier to read). A real \`<button>\` also gives you keyboard focus and Enter/Space support for free, which a clickable \`<div>\` does not.`,
-    },
     {
       q: 'Explain the CSS box model.',
       a: `Every element is a box made of four layers: **content**, then **padding**, then **border**, then **margin** on the outside. Padding is space inside the border; margin is space outside it.
@@ -66,30 +60,6 @@ Other essentials: the viewport meta tag, responsive images with \`srcset\` and \
 A **pseudo-element** styles a **part** of an element, or adds generated content: \`::before\`, \`::after\`, \`::placeholder\`, \`::first-line\`. Pseudo-classes use one colon and pseudo-elements use two.`,
     },
     {
-      q: 'How do you make a website accessible?',
-      a: `Start with **semantic HTML** and proper headings in order. Every image needs meaningful \`alt\` text, every input needs a \`<label>\`, and everything must work with the **keyboard** with a visible focus style. Text needs enough **colour contrast** (WCAG AA is 4.5:1 for normal text).
-
-Use **ARIA** only when no native element fits, like \`aria-expanded\` on a custom dropdown. Respect \`prefers-reduced-motion\`. I check with Lighthouse or axe, and by navigating with only the Tab key.`,
-    },
-    {
-      q: 'What is the critical rendering path?',
-      a: `It is the browser's steps to turn HTML, CSS and JavaScript into pixels: parse HTML into the **DOM**, parse CSS into the **CSSOM**, combine them into the **render tree**, calculate **layout** (sizes and positions), then **paint** and **composite** the layers.
-
-CSS is **render-blocking**, and normal \`<script>\` tags block HTML parsing. To speed up the first render: inline critical CSS, load scripts with \`defer\` or \`async\`, keep the page light, and preload the key font or hero image.`,
-    },
-    {
-      q: 'What is the difference between async and defer on a script tag?',
-      a: `Both download the script **without blocking** HTML parsing. The difference is when they run.
-
-**defer** runs the script **after** the HTML is fully parsed, in the order the scripts appear. It is the right choice for most app code. **async** runs the script **as soon as it downloads**, in any order, possibly before parsing finishes. That suits independent scripts like analytics. A plain \`<script>\` stops parsing until it downloads and runs.`,
-    },
-    {
-      q: 'What are reflow (layout) and repaint, and how do you avoid expensive ones?',
-      a: `**Reflow** (layout) happens when the size or position of elements changes, so the browser recalculates the geometry, often for a large part of the page. **Repaint** happens when only appearance changes, like a colour, which is cheaper.
-
-To keep things smooth: animate only \`transform\` and \`opacity\`, which the GPU can composite without layout. Avoid reading layout values (like \`offsetHeight\`) right after writing styles in a loop, which causes "layout thrashing". Batch DOM changes, and reserve space for images to prevent layout shift.`,
-    },
-    {
       q: 'What is z-index and what is a stacking context?',
       a: `\`z-index\` controls which positioned element appears on top when they overlap; a higher value is in front. It only works on positioned elements, or on flex and grid items.
 
@@ -114,40 +84,10 @@ A **stacking context** is a group that is layered as one unit. It is created by 
 Modern CSS now has native variables and nesting, so SCSS is less essential than before, but it is still common in existing projects. The main warning is deep nesting, which creates long, very specific selectors that are hard to override.`,
     },
     {
-      q: 'How do you style components in a React app? CSS Modules, Tailwind or CSS-in-JS?',
-      a: `**CSS Modules** scope class names to one file automatically, so there are no clashes. **Tailwind** uses small utility classes in the markup: very fast to build with and a consistent design system, but long class lists. **CSS-in-JS** (styled-components, Emotion) writes styles in JavaScript with props, but has a runtime cost and works poorly with React Server Components.
-
-Component libraries like **Mantine** (which I used on SkillKeepr) give ready accessible components with theming. I pick based on the team and the project, and keep one approach per codebase.`,
-    },
-    {
-      q: 'What is the difference between localStorage, sessionStorage and cookies?',
-      a: `**localStorage** keeps data with no expiry, per origin, about 5MB, and it is only readable by JavaScript. **sessionStorage** is the same but is cleared when the tab closes. **Cookies** are small (about 4KB), are **sent to the server with every request**, and can have an expiry.
-
-For security, auth tokens are safer in **HttpOnly, Secure, SameSite cookies**, because JavaScript can't read them, so an XSS attack can't steal them. localStorage is fine for non-sensitive preferences like the theme.`,
-    },
-    {
-      q: 'What are the important tags in the HTML head, for SEO and performance?',
-      a: `\`<meta charset="utf-8">\`, the **viewport** meta tag for mobile, a unique \`<title>\` and **meta description** per page, a **canonical** link to avoid duplicate pages, and **Open Graph** tags so links preview nicely when shared.
-
-For performance: \`<link rel="preload">\` for the key font or hero image, \`preconnect\` to important third-party origins, and stylesheets in the head. For SEO overall, server-rendered HTML (like Next.js) helps search engines see the content without running JavaScript.`,
-    },
-    {
-      q: 'How do you optimise images on a website?',
-      a: `Use modern formats like **WebP** or **AVIF**, serve the right size with \`srcset\` and \`sizes\` so phones don't download desktop images, and compress them. Add \`loading="lazy"\` for images below the fold, but **not** for the main hero image, which should load early (\`fetchpriority="high"\`).
-
-Always set \`width\` and \`height\` (or \`aspect-ratio\`) so the browser reserves space and the page doesn't jump (CLS). Use a CDN, and use SVG for icons and logos.`,
-    },
-    {
       q: 'What is the difference between CSS transitions and animations?',
       a: `A **transition** animates a property **between two states** when something changes, like a hover: \`transition: transform 200ms ease\`. It needs a trigger.
 
 An **animation** uses \`@keyframes\` with as many steps as you like, can run **on its own**, loop and alternate, like a loading spinner. For both, animate \`transform\` and \`opacity\` for smooth 60fps motion, and respect \`prefers-reduced-motion\` for users who turn motion off.`,
-    },
-    {
-      q: 'What are forms best practices in HTML?',
-      a: `Every input needs a connected \`<label>\`. Use the right **input types** (\`email\`, \`tel\`, \`number\`, \`date\`) so phones show the right keyboard, plus \`autocomplete\` attributes so browsers can fill them. Built-in validation (\`required\`, \`minlength\`, \`pattern\`) gives quick feedback.
-
-Show clear error messages next to the field, linked with \`aria-describedby\`. Wrap inputs in a real \`<form>\` with a submit \`<button>\` so Enter works. And always **validate again on the server**, because client-side checks can be bypassed.`,
     },
     {
       q: 'What is BEM, and why use a CSS naming convention?',
